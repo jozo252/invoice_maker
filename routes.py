@@ -43,7 +43,7 @@ def send_invoice_email(invoice, client, company):
         msg = Message(
             subject=f"Faktúra č. {invoice.invoice_number}",
             recipients=['ferko.lizak69@gmail.com'],  # ← Reálne použitie
-            body=f"Ahoj {client.name},\n\nv prílohe nájdeš svoju faktúru {invoice.invoice_number}."
+            body=f"Dobrý deň,\n\nV prílohe vám posielam  faktúru {invoice.invoice_number}."
         )
 
         with open(pdf_path, "rb") as fp:
