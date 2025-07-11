@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}Pridať klienta{% endblock %}
+
+{% block styles %}
+    <style>
+        .clients-list {
+            margin-top: 20px;
+        }
+        .client {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
+{% endblock %}
+{% block content %}
+
+<h1>Klienti</h1>
+
+<input type="text" id="clientSearch" class="form-control mb-3" placeholder="Hľadaj klienta podľa mena, IČO alebo emailu">
+
+    
+
+    {% if clients %}
+<div class="clients-list">
+    {% for client in clients %}
+    <div class="client mb-4 p-3 border rounded">
+        <div class="row">
+            <!-- Left column -->
+            <div class="col-md-9">
+                <h2>{{ client.name }}</h2>
+                <p>{{ client.street }}, {{ client.city }} {{ client.zip_code }}</p>
+                <p>{{ client.country }}</p>
+                <p>IČO: {{ client.ico }} | DIČ: {{ client.dic }}</p>
+                <p>Email: {{ client.email }} | Telefón: {{ client.phone }}</p>
+            </div>
+
+            <!-- Right column -->
+            <div class="col-md-3 d-flex flex-column align-items-end justify-content-start">
+                <a href="{{ url_for('main.edit_client', client_id=client.id) }}" class="btn btn-primary mb-2">
+                    Upraviť
+                </a>
+                <a href="{{ url_for('main.delete_client', client_id=client.id) }}" class="btn btn-danger" onclick="return confirm('Ste si istý, že chcete zmazať tohto klienta?');">
+                    Zmazať
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<script>
+document.getElementById('clientSearch').addEventListener('input', function() {
+    const searchValue = this.value.toLowerCase();
+    const clients = document.querySelectorAll('#clientsList .client');
+
+    clients.forEach(client => {
+        const text = client.textContent.toLowerCase();
+        if (text.includes(searchValue)) {
+            client.style.display = '';
+        } else {
+            client.style.display = 'none';
+        }
+    });
+});
+</script>
+
+{% endblock %}
+

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+    
+        <h2>Pridať klienta</h2>
+        <form method="POST">
+            <div>
+                <label for="name">Názov firmy / Meno</label>
+                <input type="text" name="name" required>
+            </div>
+            <div>
+                <label for="street">Ulica</label>
+                <input type="text" name="street" required>
+            </div>
+            <div>
+                <label for="city">Mesto</label>
+                <input type="text" name="city" required>
+            </div>
+            <div>
+                <label for="zip">PSČ</label>
+                <input type="text" name="zip" required>
+            </div>
+            <div>
+                <label for="country">Krajina</label>
+                <input type="text" name="country" required>
+            </div>
+            <div>
+                <label for="ICO">IČO</label>
+                <input type="text" name="ICO">
+            </div>
+            <div>
+                <label for="DIC">DIČ</label>
+                <input type="text" name="DIC">
+            </div>
+            <div>
+                <label for="email">Email</label>
+                <input type="email" name="email">
+            </div>
+            <div>
+                <label for="phone">Telefón</label>
+                <input type="text" name="phone">
+            </div>
+            <div>
+                <label for="is_vat_payer">Platiteľ DPH</label>
+                <select name="is_vat_payer">
+                    <option value="True">Áno</option>
+                    <option value="False">Nie</option>
+                </select>
+            </div>
+            <div>
+                <label for="IC_DPH">IČ DPH</label>
+                <input type="text" name="IC_DPH">
+            </div>
+            <div>   
+                <label for="payment_method">Spôsob úhrady</label>
+                <input type="text" name="payment_method">
+            </div>
+            <div>   
+                <label for="iban">IBAN</label>
+                <input type="text" name="iban">
+            </div>
+            <div>   
+                <label for="bic">BIC/SWIFT</label>
+                <input type="text" name="bic">
+            </div>
+            <button type="submit">Uložiť klienta</button>
+        </form>
+
+
+{% endblock %}
+

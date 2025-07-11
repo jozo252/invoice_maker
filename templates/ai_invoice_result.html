@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}AI Invoice Result{% endblock %}
+
+{% block content %}
+{% if message %}
+            <div class="alert alert-success">{{ message }}</div>
+        {% endif %}
+    <div class="container">
+        <h1>AI Invoice Result</h1>
+        <p>Invoice generated successfully!</p>
+        
+        <h2>Generated Invoice Details</h2>
+        <ul>
+            <li><strong>Invoice Number:</strong> {{ invoice_data.invoice_number }}</li>
+            <li><strong>Company:</strong> {{ invoice_data.company_name }}</li>
+            <li><strong>Client:</strong> {{ invoice_data.client_name }}</li>
+            <li><strong>Date:</strong> {{ invoice_data.date }}</li>
+            <li><strong>Due Date:</strong> {{ invoice_data.due_date }}</li>
+            <li><strong>Description:</strong> {{ invoice_data.description }}</li>
+            <li><strong>Quantity:</strong> {{ invoice_data.quantity }}</li>
+            <li><strong>Price per Item:</strong> {{ invoice_data.price_per_item }}</li>
+            <li><strong>Total Cost:</strong> {{ invoice_data.total_cost }}</li>
+            <li><strong>Currency:</strong> {{ invoice_data.currency }}</li>
+        </ul>
+
+        <a href="{{ url_for('main.add_invoice') }}" class="btn btn-primary">Add Another Invoice</a>
+    </div>
+{% endblock %}
+
+{% block styles %}
+    <style>
+        .container {
+            margin-top: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin: 5px 0;
+        }
+    </style>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        // You can add any JavaScript here if needed
+    </script>
+{% endblock %}

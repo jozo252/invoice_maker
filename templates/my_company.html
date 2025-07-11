@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Moja firma{% endblock %}
+
+{% block content %}
+        <h1>Moja firma</h1>
+        <p>Tu môžete spravovať údaje o vašej firme, ktoré sa použijú na faktúrach.</p>
+        
+        {% if message %}
+            <div class="alert alert-success">{{ message }}</div>
+        {% endif %}
+        <form method="POST">
+    <div>
+        <label for="name">Názov firmy / Meno</label>
+        <input type="text" name="name" value="{{ company.name if company else '' }}" required>
+    </div>
+    <div>
+        <label for="street">Ulica</label>
+        <input type="text" name="street" value="{{ company.street if company else '' }}" required>
+    </div>
+    <div>
+        <label for="city">Mesto</label>
+        <input type="text" name="city" value="{{ company.city if company else '' }}" required>
+    </div>
+    <div>
+        <label for="zip_code">PSČ</label>
+        <input type="text" name="zip_code" value="{{ company.zip_code if company else '' }}" required>
+    </div>
+    <div>
+        <label for="country">Krajina</label>
+        <input type="text" name="country" value="{{ company.country if company else '' }}" required>
+    </div>
+    <div>
+        <label for="ico">IČO</label>
+        <input type="text" name="ico" value="{{ company.ico if company else '' }}">
+    </div>
+    <div>
+        <label for="dic">DIČ</label>
+        <input type="text" name="dic" value="{{ company.dic if company else '' }}">
+    </div>
+    <div>
+        <label for="email">Email</label>
+        <input type="email" name="email" value="{{ company.email if company else '' }}">
+    </div>
+    <div>
+        <label for="phone">Telefón</label>
+        <input type="text" name="phone" value="{{ company.phone if company else '' }}">
+    </div>
+    <div>
+        <label for="is_vat_payer">Platiteľ DPH</label>
+        <select name="is_vat_payer">
+            <option value="True" {% if company and company.is_vat_payer %}selected{% endif %}>Áno</option>
+            <option value="False" {% if company and not company.is_vat_payer %}selected{% endif %}>Nie</option>
+        </select>
+    </div>
+    <div>
+        <label for="ic_dph">IČ DPH</label>
+        <input type="text" name="ic_dph" value="{{ company.ic_dph if company else '' }}">
+    </div>
+    <div>
+        <label for="payment_method">Spôsob úhrady</label>
+        <input type="text" name="payment_method" value="{{ company.payment_method if company else '' }}">
+    </div>
+    <div>
+        <label for="iban">IBAN</label>
+        <input type="text" name="iban" value="{{ company.iban if company else '' }}">
+    </div>
+    <div>
+        <label for="bic">BIC/SWIFT</label>
+        <input type="text" name="bic" value="{{ company.bic if company else '' }}">
+    </div>
+
+    <button type="submit">Uložiť</button>
+</form>
+
+{% endblock %}

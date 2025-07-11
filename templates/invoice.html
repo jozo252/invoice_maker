@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Faktúra č.: {{ invoice_data.invoice_number }}</h1>
+    <a href="#" class="btn btn-outline-secondary no-print" onclick="window.print()" title="Tlačiť">
+      <i class="fas fa-print"></i>
+    </a>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <h4>Dodávateľ</h4>
+      <p><strong>{{ company_data.name }}</strong></p>
+      <p>{{ company_data.street }}</p>
+      <p>{{ company_data.zip_code }} {{ company_data.city }}</p>
+      <p>{{ company_data.country }}</p>
+      <p>IČO: {{ company_data.ico }}</p>
+      <p>DIČ: {{ company_data.dic }}</p>
+      {% if company_data.is_vat_payer and company_data.ic_dph %}
+        <p>IČ DPH: {{ company_data.ic_dph }}</p>
+      {% else %}
+        <p><em>Dodávateľ nie je platiteľom DPH</em></p>
+      {% endif %}
+      <p>Email: {{ company_data.email }}</p>
+      <p>Telefón: {{ company_data.phone }}</p>
+      <p>IBAN: {{ company_data.iban }}</p>
+      <p>BIC/SWIFT: {{ company_data.bic }}</p>
+    </div>
+
+    <div class="col-md-6">
+      <h4>Odberateľ</h4>
+      <p><strong>{{ client_data.name }}</strong></p>
+      <p>{{ client_data.street }}</p>
+      <p>{{ client_data.zip_code }} {{ client_data.city }}</p>
+      <p>{{ client_data.country }}</p>
+      <p>IČO: {{ client_data.ico }}</p>
+      <p>DIČ: {{ client_data.dic }}</p>
+      {% if not client_data.ic_dph %}
+        <p><em>Odberateľ nie je platiteľom DPH</em></p>
+      {% else %}
+        <p>IČ DPH: {{ client_data.ic_dph }}</p>
+      {% endif %}
+      <p>Email: {{ client_data.email }}</p>
+      <p>Telefón: {{ client_data.phone }}</p>
+      <p>IBAN: {{ client_data.iban }}</p>
+      <p>BIC/SWIFT: {{ client_data.bic }}</p>
+    </div>
+  </div>
+
+  <div class="card my-4 p-3">
+    <p class="mb-2"><strong>Spôsob úhrady:</strong> {{ company_data.payment_method }}</p>
+    <div class="row text-center">
+      <div class="col">
+        <small class="text-muted">Dátum vystavenia</small>
+        <div><strong>{{ invoice_data.date.strftime('%d.%m.%Y') }}</strong></div>
+      </div>
+      <div class="col">
+        <small class="text-muted">Dátum dodania</small>
+        <div><strong>{{ invoice_data.date.strftime('%d.%m.%Y') }}</strong></div>
+      </div>
+      <div class="col">
+        <small class="text-muted">Splatnosť faktúry</small>
+        <div><strong>{{ invoice_data.due_date.strftime('%d.%m.%Y') }}</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <table class="table table-bordered">
+    <thead class="table-light">
+      <tr>
+        <th>Popis</th>
+        <th>Množstvo</th>
+        <th>MJ</th>
+        <th>Cena za MJ</th>
+        <th>Celkom</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>{{ invoice_data.description }}</td>
+        <td>{{ invoice_data.quantity }}</td>
+        <td>{{ invoice_data.unit }}</td>
+        <td>{{ invoice_data.price_per_item }} {{ invoice_data.currency }}</td>
+        <td>{{ invoice_data.total_cost }} {{ invoice_data.currency }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  {% if company_data.is_vat_payer %}
+    <div class="mt-3">
+      <p>Základ DPH: {{ "%.2f"|format(invoice_data.total_cost) }} {{ invoice_data.currency }}</p>
+      <p>Sadzba DPH: {{ invoice_data.vat_rate }}%</p>
+      <p>DPH: {{ "%.2f"|format(invoice_data.total_cost * invoice_data.vat_rate / 100) }} {{ invoice_data.currency }}</p>
+      <h4>Spolu na úhradu: {{ "%.2f"|format(invoice_data.total_cost * (1 + invoice_data.vat_rate / 100)) }} {{ invoice_data.currency }}</h4>
+    </div>
+  {% else %}
+    <h4 class="mt-3">Celkom: {{ invoice_data.total_cost }} {{ invoice_data.currency }}</h4>
+  {% endif %}
+
+  <div class="row mt-5">
+    <div class="col text-center">
+      <strong>Vyhotovil:</strong><br>
+      <img src="{{ url_for('static', filename='stamp.png', _external=True) }}" alt="Stamp" style="max-height: 80px;"><br>
+      <hr class="w-50 mx-auto">
+    </div>
+    <div class="col text-center">
+      <strong>Prevzal:</strong><br><br><br><br>
+      <hr class="w-50 mx-auto">
+    </div>
+  </div>
+
+  <p class="text-center mt-4 fst-italic">Ďakujeme za vašu spoluprácu.</p>
+</div>
+{% endblock %}

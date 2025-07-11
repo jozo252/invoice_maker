@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}AI Invoice Generator{% endblock %}
+
+{% block content %}
+
+<div class="container">
+    <h1>AI Invoice Generator</h1>
+    <p>Use the form below to generate an invoice using AI.<br>( Client,price,date,due_date )</p>
+
+    <form method="POST">
+            <div>
+                <input type="text" name="invoice_description" required>
+                <button type="submit">Generate invoice</button>
+            </div>
+    </form>
+{% endblock %}
