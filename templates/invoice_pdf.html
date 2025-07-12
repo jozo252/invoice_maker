@@ -122,14 +122,16 @@
             </tr>
         </thead>
         <tbody>
-            <tr>
-                <td>{{ invoice_data.description }}</td>
-                <td>{{ invoice_data.quantity }}</td>
-                <td>{{ invoice_data.unit }}</td>
-                <td>{{ invoice_data.price_per_item }} {{ invoice_data.currency }}</td>
-                <td>{{ invoice_data.total_cost }} {{ invoice_data.currency }}</td>
-            </tr>
-        </tbody>
+  {% for item in invoice_data.items %}
+    <tr>
+      <td>{{ item.description }}</td>
+      <td>{{ item.quantity }}</td>
+      <td>{{ item.unit or '' }}</td>
+      <td>{{ "%.2f"|format(item.price_per_item) }} {{ invoice_data.currency }}</td>
+      <td>{{ "%.2f"|format(item.total_cost) }} {{ invoice_data.currency }}</td>
+    </tr>
+  {% endfor %}
+</tbody>
     </table>
 
     <div class="totals">

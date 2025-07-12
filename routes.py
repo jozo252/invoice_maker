@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for
-from models import Client, Invoice, Company
+from models import Client, Invoice, Company, InvoiceItem
 from datetime import datetime, timezone
 from difflib import get_close_matches
 from ai_chat import invoice_maker
@@ -82,28 +82,41 @@ def create_invoice_from_ai_data(data):
     invoice_data = invoice_maker(data)
     if not invoice_data:
         return None
+
     client = get_client_by_name(invoice_data)
     if not client:
         return None
+
     company = Company.query.first()
     if not company:
         return None
 
+    # Spočítaj total_cost
+    total_cost = sum(
+        item["quantity"] * item["price_per_item"] for item in invoice_data["items"]
+    )
+
     invoice = Invoice(
         invoice_number=generate_invoice_number(),
-        date=datetime.strptime(invoice_data['date'], '%Y-%m-%d').date(),
-        due_date=datetime.strptime(invoice_data['due_date'], '%Y-%m-%d').date(),
-        description=invoice_data['description'],
-        quantity=invoice_data['quantity'],
-        unit=invoice_data['unit'],
-        price_per_item=invoice_data['price_per_item'],
-        currency=invoice_data['currency'],
-        total_cost=invoice_data['total_cost'],
+        date=datetime.strptime(invoice_data["date"], "%Y-%m-%d").date(),
+        due_date=datetime.strptime(invoice_data["due_date"], "%Y-%m-%d").date(),
+        currency=invoice_data["currency"],
+        total_cost=total_cost,
         vat_rate=0.0,
         client_id=client.id,
         company_id=company.id,
         created_at=datetime.now(timezone.utc)
     )
+
+    # Pridaj položky do faktúry
+    for item in invoice_data["items"]:
+        invoice.items.append(InvoiceItem(
+            description=item["description"],
+            quantity=item["quantity"],
+            unit=item["unit"],
+            price_per_item=item["price_per_item"],
+            total_cost=item["quantity"] * item["price_per_item"]
+        ))
 
     db.session.add(invoice)
     send_invoice_email(invoice, client, company)
@@ -111,9 +124,10 @@ def create_invoice_from_ai_data(data):
     return invoice
 
 
+
 @main.route('/clients')
 def list_clients():
-    return render_template('clients.html', clients=Client.query.all())
+    return render_template('clients.html', clients=db.session.query(Client).all())
 
 @main.route('/add_client', methods=['GET', 'POST'])
 def add_client():
@@ -203,25 +217,54 @@ def my_company():
 def add_invoice():
     clients = Client.query.all()
     companies = Company.query.all()
+
+
     if request.method == 'POST':
+        items = []
+        total_cost = 0
+
+        descriptions = request.form.getlist('description[]')
+        quantities = request.form.getlist('quantity[]')
+        units = request.form.getlist('unit[]')
+        prices = request.form.getlist('price_per_item[]')
+
+        for desc, qty, unit, price in zip(descriptions, quantities, units, prices):
+            qty = float(qty)
+            price = float(price)
+            item_total = qty * price
+            total_cost += item_total
+
+            items.append(InvoiceItem(
+                description=desc,
+                quantity=qty,
+                unit=unit,
+                price_per_item=price,
+                total_cost=item_total
+            ))
+
         invoice = Invoice(
             invoice_number=request.form['invoice_number'],
             date=datetime.strptime(request.form['date'], '%Y-%m-%d').date(),
             due_date=datetime.strptime(request.form['due_date'], '%Y-%m-%d').date(),
-            description=request.form['description'],
-            quantity=float(request.form['quantity']),
-            unit=request.form['unit'],
-            price_per_item=float(request.form['price_per_item']),
             currency=request.form['currency'],
-            total_cost=float(request.form['quantity']) * float(request.form['price_per_item']),
             vat_rate=float(request.form.get('vat_rate', 0.0)),
+            total_cost=total_cost,
+            
             client_id=int(request.form['client_id']),
             company_id=int(request.form['company_id']),
             created_at=datetime.now(timezone.utc)
         )
+
         db.session.add(invoice)
+        db.session.flush()  # vloží invoice.id bez commitu
+
+        for item in items:
+            item.invoice_id = invoice.id
+            db.session.add(item)
+
         db.session.commit()
         return redirect(url_for('main.view_invoice', invoice_id=invoice.id))
+
     return render_template('add_invoice.html', clients=clients, companies=companies)
 
 @main.route('/invoice/<int:invoice_id>')
@@ -229,7 +272,7 @@ def view_invoice(invoice_id):
     invoice = Invoice.query.get_or_404(invoice_id)
     if not invoice.company:
         return "Company information is not set up. Please set up your company first.", 400
-    return render_template("invoice.html", invoice_data=invoice, client_data=invoice.client, company_data=invoice.company)
+    return render_template("invoice.html", invoice_data=invoice, client_data=invoice.client, company_data=invoice.company, items=invoice.items)
 
 @main.route('/invoices')
 def list_invoices():

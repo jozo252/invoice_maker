@@ -3,6 +3,7 @@ from flask import Flask
 from extensions import db, mail  # <--- import from extensions
 import os
 from dotenv import load_dotenv
+from flask_migrate import Migrate
 load_dotenv()  # Load environment variables from .env file
 
 def create_app():
@@ -19,6 +20,7 @@ def create_app():
     app.config['MAIL_DEFAULT_SENDER'] = 'adamgallik11@gmail.com'
 
     db.init_app(app)
+    migrate = Migrate(app, db)  # Initialize Flask-Migrate
     mail.init_app(app)
 
     from routes import main as main_blueprint

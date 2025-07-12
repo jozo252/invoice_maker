@@ -10,7 +10,18 @@
 
     <form method="POST">
             <div>
-                <input type="text" name="invoice_description" required>
+                <div class="mb-3">
+  <label for="invoice_description" class="form-label">Popis faktúry</label>
+  <textarea 
+    id="invoice_description"
+    name="invoice_description"
+    class="form-control"
+    rows="4"
+    placeholder="Zadaj popis faktúry, napríklad: Dodávka a montáž elektroinštalácie v administratívnej budove G&F Elektro, 10 hodín práce a 2 elektromateriály."
+    required
+  ></textarea>
+</div>
+
                 <button type="submit">Generate invoice</button>
             </div>
     </form>
