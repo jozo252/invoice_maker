@@ -4,6 +4,8 @@
     
         <h2>Pridať klienta</h2>
         <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
             <div>
                 <label for="name">Názov firmy / Meno</label>
                 <input type="text" name="name" required>
@@ -42,14 +44,12 @@
             </div>
             <div>
                 <label for="is_vat_payer">Platiteľ DPH</label>
-                <select name="is_vat_payer">
-                    <option value="True">Áno</option>
-                    <option value="False">Nie</option>
-                </select>
+                <input type="checkbox" name="is_vat_payer" value="1">
+
             </div>
             <div>
-                <label for="IC_DPH">IČ DPH</label>
-                <input type="text" name="IC_DPH">
+                <label for="ic_dph">IČ DPH</label>
+                <input type="text" name="ic_dph">
             </div>
             <div>   
                 <label for="payment_method">Spôsob úhrady</label>

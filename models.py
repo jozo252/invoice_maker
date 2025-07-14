@@ -1,9 +1,26 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone
 from app import db
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import UserMixin
 
 
+class User(db.Model,UserMixin):
+    __tablename__ = 'users'
 
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def __repr__(self):
+        return f'<User {self.email}>'
 class InvoiceItem(db.Model):
     __tablename__ = 'invoice_items'
     id = db.Column(db.Integer, primary_key=True)
@@ -25,6 +42,8 @@ class Client(db.Model):
         ico = db.Column(db.String(20), nullable=False)
         dic = db.Column(db.String(20), nullable=False)
         street = db.Column(db.String(100), nullable=False)
+        user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+        user = db.relationship('User', backref=db.backref('clients', lazy=True))
         city = db.Column(db.String(50), nullable=False)
         zip_code = db.Column(db.String(20), nullable=False)
         country = db.Column(db.String(50), nullable=False)
@@ -47,6 +66,8 @@ class Invoice(db.Model):
         invoice_number = db.Column(db.String(50), nullable=False)
         date = db.Column(db.Date, nullable=False)
         due_date = db.Column(db.Date, nullable=False)
+        user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+        user = db.relationship('User', backref=db.backref('invoices', lazy=True))
         currency = db.Column(db.String(10), nullable=False)
         total_cost = db.Column(db.Float, nullable=False)  # Total cost calculated as quantity
         vat_rate = db.Column(db.Float, nullable=True, default=0.0)  # VAT rate in percentage
@@ -55,7 +76,6 @@ class Invoice(db.Model):
         company= db.relationship('Company', backref=db.backref('invoices', lazy=True))
         client = db.relationship('Client', backref=db.backref('invoices', lazy=True))
         items = db.relationship("InvoiceItem", back_populates="invoice", cascade="all, delete-orphan")
-
         created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))  # Timestamp when the invoice was created
         
 
@@ -68,6 +88,8 @@ class Company(db.Model):
         ico = db.Column(db.String(20), nullable=False)
         dic = db.Column(db.String(20), nullable=False)
         street = db.Column(db.String(100), nullable=False)
+        user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+        user = db.relationship('User', backref=db.backref('companies', lazy=True))
         city = db.Column(db.String(50), nullable=False)
         zip_code = db.Column(db.String(20), nullable=False)
         country = db.Column(db.String(50), nullable=False)

@@ -9,6 +9,8 @@
     <p>Use the form below to generate an invoice using AI.<br>( Client,price,date,due_date )</p>
 
     <form method="POST">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
             <div>
                 <div class="mb-3">
   <label for="invoice_description" class="form-label">Popis faktúry</label>

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+  <h2>Welcome, {{ current_user.username }} 👋</h2>
+
+  <div class="row mt-4">
+    <div class="col-md-6">
+      <a href="{{ url_for('main.add_invoice') }}" class="btn btn-primary btn-lg w-100 mb-3">
+        ➕ Create New Invoice
+      </a>
+    </div>
+    <div class="col-md-6">
+      <a href="{{ url_for('main.list_invoices') }}" class="btn btn-outline-secondary btn-lg w-100 mb-3">
+        📄 View All Invoices
+      </a>
+    </div>
+  </div>
+
+  <hr>
+
+  <h4 class="mt-4">Recent Invoices</h4>
+  {% if invoices %}
+    <table class="table table-striped mt-2">
+      <thead>
+        <tr>
+          <th>Invoice #</th>
+          <th>Client</th>
+          <th>Date</th>
+          <th>Total</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for invoice in invoices %}
+        <tr>
+          <td>{{ invoice.invoice_number }}</td>
+          <td>{{ invoice.client.name }}</td>
+          <td>{{ invoice.date.strftime('%d.%m.%Y') }}</td>
+          <td>{{ "%.2f"|format(invoice.total_cost) }} {{ invoice.currency }}</td>
+          <td>
+            <a href="{{ url_for('main.view_invoice', invoice_id=invoice.id) }}" class="btn btn-sm btn-outline-info">View</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No invoices created yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

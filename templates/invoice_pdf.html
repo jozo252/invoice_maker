@@ -84,8 +84,12 @@
       {% endif %}
       <p>Email: {{ client_data.email }}</p>
       <p>Telefón: {{ client_data.phone }}</p>
-      <p>IBAN: {{ client_data.iban }}</p>
-      <p>BIC/SWIFT: {{ client_data.bic }}</p>
+      {% if client_data.iban %}
+        <p>IBAN: {{ client_data.iban }}</p>
+      {% endif %}
+      {% if client_data.bic %}
+        <p>BIC/SWIFT: {{ client_data.bic }}</p>
+      {% endif %}
     </td>
   </tr>
 </table>

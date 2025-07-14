@@ -3,52 +3,105 @@
 {% block title %}Faktúry{% endblock %}
 
 {% block styles %}
-    <style>
-        .invoices-list {
-            margin-top: 20px;
-        }
-        .invoice {
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
-    </style>
+<style>
+    .container-fluid {
+        max-width: 1400px;
+    }
+
+    .invoice {
+        background: #fff;
+        border: 1px solid #ddd;
+        box-shadow: 0 0 8px rgba(0, 0, 0, 0.05);
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 10px;
+    }
+
+    .invoice-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+
+    .invoice-table th,
+    .invoice-table td {
+        border: 1px solid #ccc;
+        padding: 8px 12px;
+        text-align: left;
+    }
+
+    .invoice-table th {
+        background-color: #f8f9fa;
+    }
+
+    .invoice .col-md-9 p {
+        margin-bottom: 6px;
+    }
+
+    h5 {
+        margin-bottom: 12px;
+    }
+    
+</style>
+
 {% endblock %}
 
 {% block content %}
-    <h1>Faktúry</h1>
-    <input type="text" id="invoiceSearch" class="form-control mb-3" placeholder="Hľadaj faktúru podľa čísla, klienta alebo dátumu">
+<div class="container-fluid">
+    <h1 class="mb-4">Faktúry</h1>
+
+    <input type="text" id="invoiceSearch" class="form-control mb-4" placeholder="Hľadaj faktúru podľa čísla, klienta alebo dátumu">
 
     {% if message %}
         <div class="alert alert-success">{{ message }}</div>
     {% endif %}
-    <div class="invoicesList">
-    {% for invoice in invoices %}
-        <div class="invoice mb-4 p-3 border rounded">
+
+    <div id="invoicesList width=80%">
+        {% for invoice in invoices %}
+            <div class="invoice">
             <div class="row">
-                <!-- Left column -->
                 <div class="col-md-9">
-                    <p>Dátum vystavenia: {{ invoice.date.strftime('%d.%m.%Y') }}</p>
-                    <h2>Faktúra č. {{ invoice.invoice_number }}</h2>
-                    <p>Klient: {{ invoice.client.name }}</p>
-                    <p>Dátum splatnosti: {{ invoice.due_date.strftime('%d.%m.%Y') }}</p>
-                    <p>Popis služby: {{ invoice.description }}</p>
-                    <p>Množstvo: {{ invoice.quantity }}</p>
-                    <p>Cena za MJ: {{ invoice.price_per_item }}</p>
-                    <p>Jednotka: {{ invoice.unit }}</p>
-                    <p>Mena: {{ invoice.currency }}</p>
+                    <h5>Faktúra č. {{ invoice.invoice_number }}</h5>
+                    <p><strong>Dátum vystavenia:</strong> {{ invoice.date.strftime('%d.%m.%Y') }}</p>
+                    <p><strong>Dátum splatnosti:</strong> {{ invoice.due_date.strftime('%d.%m.%Y') }}</p>
+                    <p><strong>Klient:</strong> {{ invoice.client.name }}</p>
+
+                    <table class="invoice-table">
+                        <thead>
+                            <tr>
+                                <th>Položka</th>
+                                <th>Množstvo</th>
+                                <th>Jednotka</th>
+                                <th>Cena/ks</th>
+                                <th>Celkovo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in invoice.items %}
+                            <tr>
+                                <td>{{ item.description }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>{{ item.unit or '' }}</td>
+                                <td>{{ "%.2f"|format(item.price_per_item) }} {{ invoice.currency }}</td>
+                                <td>{{ "%.2f"|format(item.total_cost) }} {{ invoice.currency }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                    <p><strong>Celkom: {{ invoice.total_cost }} </strong> {{ invoice.currency }}</p>
                 </div>
 
-                <!-- Right column -->
-                <div class="col-md-3 d-flex align-items-start justify-content-end">
-                    <a href="{{ url_for('main.view_invoice', invoice_id=invoice.id) }}" class="btn btn-primary mt-2">
+                <div class="col-md-3 d-flex flex-column align-items-end">
+                    <a href="{{ url_for('main.view_invoice', invoice_id=invoice.id) }}" class="btn btn-primary mb-2">
                         Zobraziť faktúru
                     </a>
-                    
-                    <form method="POST" action="{{ url_for('main.delete_invoice', invoice_id=invoice.id) }}" class="d-inline">
-                        <button type="submit" class="btn btn-danger mt-2 ms-2" onclick="return confirm('Ste si istý, že chcete zmazať túto faktúru?');">
+                    <form method="POST" action="{{ url_for('main.delete_invoice', invoice_id=invoice.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('Ste si istý, že chcete zmazať túto faktúru?');">
                             Zmazať
                         </button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -58,19 +111,14 @@
 </div>
 
 <script>
-document.getElementById('invoiceSearch').addEventListener('input', function() {
+document.getElementById('invoiceSearch').addEventListener('input', function () {
     const searchValue = this.value.toLowerCase();
     const invoices = document.querySelectorAll('#invoicesList .invoice');
 
     invoices.forEach(invoice => {
         const text = invoice.textContent.toLowerCase();
-        if (text.includes(searchValue)) {
-            invoice.style.display = '';
-        } else {
-            invoice.style.display = 'none';
-        }
+        invoice.style.display = text.includes(searchValue) ? '' : 'none';
     });
 });
 </script>
-
 {% endblock %}

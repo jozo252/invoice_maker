@@ -6,6 +6,8 @@
 <div class="container mt-4">
     <h2>Upraviť klienta</h2>
     <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
         <div class="form-group">
             <label>Meno/Názov firmy</label>
             <input type="text" name="name" class="form-control" value="{{ client.name }}" required>
