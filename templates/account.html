@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+<h1>Môj účet</h1>
+<p><strong>Meno:</strong> {{ user.username }}</p>
+<p><strong>Email:</strong> {{ user.email }}</p>
+<p><strong>Stav:</strong> {{ "Aktívne predplatné" if user.is_paid else "Bez predplatného" }}</p>
+
+{% if user.is_paid %}
+  <p>Ďakujeme, že si predplatiteľ!</p>
+  <!-- Optional: manage billing link -->
+{% else %}
+  <a href="{{ url_for('main.pricing') }}" class="btn btn-primary">Aktivuj predplatné</a>
+{% endif %}
+
+{% endblock %}

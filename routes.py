@@ -7,11 +7,123 @@ from extensions import db, mail
 from flask_mail import Message
 from pdf_generator import render_invoice_to_pdf
 import os
+import stripe
+from dotenv import load_dotenv
+from app import CSRFProtect, csrf
+
+
+
 from forms import RegistrationForm, LoginForm
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-
+load_dotenv()
 main = Blueprint('main', __name__)
+
+
+#stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
+stripe.api_key = 'sk_test_51RkrGoR3i42rl2ZpoVRD8uvf3DXr6Efj4AnqJ3pl5n2cg7JdS1VExdqPhC6Vox6SFYM5RMj3K7rqRG61RF7wCQOI00gYHXgMSD'
+
+
+@main.route('/account')
+@login_required
+def account():
+    return render_template('account.html',user=current_user)
+
+
+@main.route('/pricing')
+@login_required
+def pricing():
+    return render_template('pricing.html')
+
+@csrf.exempt
+@main.route('/webhook', methods=['POST'])
+def stripe_webhook():
+    payload = request.data
+    sig_header = request.headers.get('Stripe-Signature')
+    #endpoint_secret = os.getenv('STRIPE_ENDPOINT_SECRET')
+    endpoint_secret = "whsec_8efa6bc0c0e56abfc1b9884a34387fc4cf054f8f8c7ce9a290d86a8de20106d2"
+    
+
+    
+
+    if not endpoint_secret:
+        return 'Webhook secret missing', 500
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, endpoint_secret
+        )
+    except ValueError as e:
+        print("❌ Invalid payload", e)
+        return 'Invalid payload', 400
+    except stripe.error.SignatureVerificationError as e:
+        print("❌ Invalid signature", e)
+        return 'Invalid signature', 400
+
+    print("✅ Webhook event parsed:", event['type'])
+
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        print("✅ Session data:", session)
+        user_id = session.get('metadata', {}).get('user_id')
+        if user_id:
+            user = User.query.get(int(user_id))
+            if user:
+                user.is_paid = True
+                db.session.commit()
+                print(f"🔓 User {user.email} marked as paid.")
+            else:
+                print("❌ User not found.")
+        else:
+            print("❌ Metadata missing user_id.")
+    
+    return '', 200
+
+
+
+
+
+
+@main.route('/create-checkout-session')
+@login_required
+def create_checkout_session():
+    session = stripe.checkout.Session.create(
+        payment_method_types=['card'],
+        mode='subscription',
+        line_items=[{
+            'price': 'price_1RkrMFR3i42rl2ZpALUc24pX',
+            'quantity': 1,
+        }],
+        success_url=url_for('main.success', _external=True) + '?session_id={CHECKOUT_SESSION_ID}',
+        cancel_url=url_for('main.cancel', _external=True),  # you'll want to make a cancel page too
+        customer_email=current_user.email,
+        metadata={
+            'user_id': current_user.id
+        }
+)
+    
+    return redirect(session.url, code=303)
+
+
+
+@main.route('/success')
+def success():
+    session_id = request.args.get('session_id')
+    if not session_id:
+        return redirect(url_for('main.dashboard'))
+
+    session = stripe.checkout.Session.retrieve(session_id)
+    customer = stripe.Customer.retrieve(session.customer)
+
+    return render_template('success.html', customer_email=customer.email)
+
+
+@main.route('/cancel')
+def cancel():
+    return 'Platba bola zrušená.'
+
+
+
 
 
 @main.route('/register', methods=['GET', 'POST'])
@@ -188,7 +300,7 @@ def create_invoice_from_ai_data(data):
         ))
 
     db.session.add(invoice)
-    send_invoice_email(invoice, client, company)
+    #send_invoice_email(invoice, client, company)
     db.session.commit()
     return invoice
 
@@ -346,6 +458,30 @@ def add_invoice():
 
     return render_template('add_invoice.html', clients=clients, companies=companies)
 
+@main.route('/show_ai_invoice/<int:invoice_id>', methods=['GET', 'POST'])
+@login_required
+def view_ai_invoice(invoice_id):
+    invoice = Invoice.query.filter_by(id=invoice_id, user_id=current_user.id).first_or_404()
+    client = invoice.client
+    company = invoice.company
+
+    if request.method == 'POST':
+        try:
+            send_invoice_email(invoice, client, company)
+            flash('Email odoslaný!', 'success')
+            return redirect(url_for('main.list_invoices'))  # optional
+        except Exception as e:
+            flash(f'Chyba pri odosielaní emailu: {str(e)}', 'danger')
+
+    return render_template(
+        "show_ai_invoice.html",
+        invoice_data=invoice,
+        client_data=client,
+        company_data=company,
+        items=invoice.items
+    )
+
+
 @main.route('/invoice/<int:invoice_id>')
 @login_required
 def view_invoice(invoice_id):
@@ -362,12 +498,16 @@ def list_invoices():
 @main.route('/ai_invoice', methods=['GET', 'POST'])
 @login_required
 def ai_invoice():
-    if request.method == 'POST':
-        invoice_description = request.form.get('invoice_description')
-        invoice = create_invoice_from_ai_data(invoice_description)
-        if not invoice:
-            return render_template('ai_invoice.html', error="Failed to create invoice. Please check the input data.")
-        return redirect(url_for('main.view_invoice', invoice_id=invoice.id))
+    if not current_user.is_paid:
+        flash("Potrebujete aktívne predplatné pre AI funkciu.", "danger")
+        return redirect(url_for('main.pricing'))
+    else:
+        if request.method == 'POST':
+            invoice_description = request.form.get('invoice_description')
+            invoice = create_invoice_from_ai_data(invoice_description)
+            if not invoice:
+                return render_template('ai_invoice.html', error="Failed to create invoice. Please check the input data.")
+            return redirect(url_for('main.view_ai_invoice', invoice_id=invoice.id))
     return render_template('ai_invoice.html')
 
 @main.route('/delete_invoice/<int:invoice_id>', methods=['POST'])

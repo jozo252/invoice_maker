@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}Úspešná platba{% endblock %}
+
+{% block content %}
+<div class="container text-center mt-5">
+    <h1 class="text-success">✅ Platba prebehla úspešne</h1>
+    <p>Ďakujeme, {{ customer_email }}! Vaša objednávka bola úspešná.</p>
+
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary mt-4">Prejsť na dashboard</a>
+</div>
+{% endblock %}

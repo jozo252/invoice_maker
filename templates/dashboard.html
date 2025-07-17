@@ -3,6 +3,7 @@
 {% block content %}
 <div class="container mt-5">
   <h2>Welcome, {{ current_user.username }} 👋</h2>
+<a href="{{ url_for('main.create_checkout_session') }}" class="btn btn-success">Získať predplatné</a>
 
   <div class="row mt-4">
     <div class="col-md-6">
