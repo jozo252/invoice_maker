@@ -4,121 +4,87 @@
 
 {% block styles %}
 <style>
-    .container-fluid {
-        max-width: 1400px;
-    }
+  /* Escapes any .container max-width */
+  .full-bleed {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+  }
 
-    .invoice {
-        background: #fff;
-        border: 1px solid #ddd;
-        box-shadow: 0 0 8px rgba(0, 0, 0, 0.05);
-        padding: 20px;
-        margin-bottom: 20px;
-        border-radius: 10px;
-    }
+  .invoices-wrap {
+    padding: 0 24px; /* keep some breathing room on wide screens */
+  }
 
-    .invoice-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-    }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: left; }
+  th { background: #f8f9fa; }
+  .btn { margin-right: 6px; }
 
-    .invoice-table th,
-    .invoice-table td {
-        border: 1px solid #ccc;
-        padding: 8px 12px;
-        text-align: left;
-    }
 
-    .invoice-table th {
-        background-color: #f8f9fa;
-    }
 
-    .invoice .col-md-9 p {
-        margin-bottom: 6px;
-    }
-
-    h5 {
-        margin-bottom: 12px;
-    }
-    
 </style>
-
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="full-bleed">
+  <div class="invoices-wrap">
     <h1 class="mb-4">Faktúry</h1>
 
-    <input type="text" id="invoiceSearch" class="form-control mb-4" placeholder="Hľadaj faktúru podľa čísla, klienta alebo dátumu">
+    <input type="text" id="invoiceSearch" class="form-control mb-4"
+           placeholder="Hľadaj faktúru podľa čísla, klienta alebo dátumu">
 
     {% if message %}
-        <div class="alert alert-success">{{ message }}</div>
+      <div class="alert alert-success">{{ message }}</div>
     {% endif %}
 
-    <div id="invoicesList width=80%">
-        {% for invoice in invoices %}
-            <div class="invoice">
-            <div class="row">
-                <div class="col-md-9">
-                    <h5>Faktúra č. {{ invoice.invoice_number }}</h5>
-                    <p><strong>Dátum vystavenia:</strong> {{ invoice.date.strftime('%d.%m.%Y') }}</p>
-                    <p><strong>Dátum splatnosti:</strong> {{ invoice.due_date.strftime('%d.%m.%Y') }}</p>
-                    <p><strong>Klient:</strong> {{ invoice.client.name }}</p>
-
-                    <table class="invoice-table">
-                        <thead>
-                            <tr>
-                                <th>Položka</th>
-                                <th>Množstvo</th>
-                                <th>Jednotka</th>
-                                <th>Cena/ks</th>
-                                <th>Celkovo</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in invoice.items %}
-                            <tr>
-                                <td>{{ item.description }}</td>
-                                <td>{{ item.quantity }}</td>
-                                <td>{{ item.unit or '' }}</td>
-                                <td>{{ "%.2f"|format(item.price_per_item) }} {{ invoice.currency }}</td>
-                                <td>{{ "%.2f"|format(item.total_cost) }} {{ invoice.currency }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-
-                    <p><strong>Celkom: {{ invoice.total_cost }} </strong> {{ invoice.currency }}</p>
-                </div>
-
-                <div class="col-md-3 d-flex flex-column align-items-end">
-                    <a href="{{ url_for('main.view_invoice', invoice_id=invoice.id) }}" class="btn btn-primary mb-2">
-                        Zobraziť faktúru
-                    </a>
-                    <form method="POST" action="{{ url_for('main.delete_invoice', invoice_id=invoice.id) }}">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-danger" onclick="return confirm('Ste si istý, že chcete zmazať túto faktúru?');">
-                            Zmazať
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
+    {% if invoices %}
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>Číslo faktúry</th>
+            <th>Klient</th>
+            <th>Celkom</th>
+            <th>Status</th>
+            <th>Akcie</th>
+          </tr>
+        </thead>
+        <tbody id="invoicesList">
+          {% for invoice in invoices %}
+          <tr>
+            <td>{{ invoice.invoice_number }}</td>
+            <td>{{ invoice.client.name }}</td>
+            <td>{{ "%.2f"|format(invoice.total_cost) }} {{ invoice.currency }}</td>
+            <td><!-- Status placeholder --></td>
+            <td>
+              <a href="{{ url_for('main.view_invoice', invoice_id=invoice.id) }}" class="btn btn-primary btn-sm">Zobraziť</a>
+              <form method="POST" action="{{ url_for('main.delete_invoice', invoice_id=invoice.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger btn-sm"
+                        onclick="return confirm('Ste si istý, že chcete zmazať túto faktúru?');">
+                  Zmazať
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
     {% else %}
-        <p>Žiadne faktúry.</p>
-    {% endfor %}
+      <p>Žiadne faktúry.</p>
+    {% endif %}
+  </div>
+
+  
 </div>
 
 <script>
 document.getElementById('invoiceSearch').addEventListener('input', function () {
-    const searchValue = this.value.toLowerCase();
-    const invoices = document.querySelectorAll('#invoicesList .invoice');
-
-    invoices.forEach(invoice => {
-        const text = invoice.textContent.toLowerCase();
-        invoice.style.display = text.includes(searchValue) ? '' : 'none';
-    });
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('#invoicesList tr').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
 });
 </script>
 {% endblock %}

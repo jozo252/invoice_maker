@@ -222,7 +222,7 @@ def send_invoice_email(invoice, client, company):
     try:
         msg = Message(
             subject=f"Faktúra č. {invoice.invoice_number}",
-            recipients=[client.email],  # ← Reálne použitie
+            recipients=['ferko.lizak69@gmail.com'],  # ← Reálne použitie
             body=f"Dobrý deň,\n\nV prílohe vám posielam  faktúru {invoice.invoice_number}."
         )
 
