@@ -29,7 +29,9 @@
           <th>Client</th>
           <th>Date</th>
           <th>Total</th>
-          <th></th>
+          <th>Dátum splatnosti</th>
+          <th>Status</th>
+          <th>Zobraziť faktúru</th>
         </tr>
       </thead>
       <tbody>
@@ -39,13 +41,33 @@
           <td>{{ invoice.client.name }}</td>
           <td>{{ invoice.date.strftime('%d.%m.%Y') }}</td>
           <td>{{ "%.2f"|format(invoice.total_cost) }} {{ invoice.currency }}</td>
+           <td>
+          {{ invoice.due_date.strftime('%d.%m.%Y') }}
+           </td>
+
           <td>
-            <a href="{{ url_for('main.view_invoice', invoice_id=invoice.id) }}" class="btn btn-sm btn-outline-info">View</a>
+          {% if invoice.status == InvoiceStatus.paid %}
+              <span class="badge bg-success">Zaplatené</span>
+          {% elif invoice.is_overdue %}
+              <span class="badge bg-danger">Po splatnosti: {{ invoice.days_overdue }} dni</span>
+          {% else %}
+              <span class="badge bg-warning">Splatnosť o {{ invoice.days_until_due }} dní</span>
+          {% endif %}
+                  </td>
+          
+          <td>
+            <a href="{{ url_for('main.view_invoice', invoice_id=invoice.id) }}" class="btn btn-sm btn-outline-info">Zobraziť</a>
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
+
+<h2>Revenue Chart</h2>
+<img src="{{ url_for('main.dashboard_graph') }}" alt="Revenue per month">
+
+
+
   {% else %}
     <p>No invoices created yet.</p>
   {% endif %}

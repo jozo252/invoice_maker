@@ -1,8 +1,11 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime, timezone
+from datetime import datetime, timezone,date
 from app import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
+import enum
+from sqlalchemy.ext.hybrid import hybrid_property
+
 
 
 class User(db.Model,UserMixin):
@@ -59,7 +62,10 @@ class Client(db.Model):
         ic_dph = db.Column(db.String(20), nullable=True)  # Optional field for VAT ID if the client is a VAT payer
 
 
-
+class InvoiceStatus(enum.Enum):
+    unpaid = "unpaid"
+    paid = "paid"
+    canceled = "canceled"
 
 
 
@@ -80,7 +86,23 @@ class Invoice(db.Model):
         client = db.relationship('Client', backref=db.backref('invoices', lazy=True))
         items = db.relationship("InvoiceItem", back_populates="invoice", cascade="all, delete-orphan")
         created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))  # Timestamp when the invoice was created
+        status = db.Column(db.Enum(InvoiceStatus), nullable=False, default=InvoiceStatus.unpaid)
+        @hybrid_property
+        def is_overdue(self):
+            return self.status == InvoiceStatus.unpaid and date.today() > self.due_date
+        @hybrid_property
+        def days_overdue(self):
+            return (date.today() - self.due_date).days if self.is_overdue else 0
+        @hybrid_property
+        def days_until_due(self):
+            return (self.due_date - date.today()).days if self.status == InvoiceStatus.unpaid else 0
+        @property
+        def display_status(self):
+            if self.status == InvoiceStatus.paid:
+                return "paid"
+            return "overdue" if self.is_overdue else "waiting"
         
+
 
      
 

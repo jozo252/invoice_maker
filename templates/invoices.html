@@ -1,82 +1,97 @@
 {% extends "base.html" %}
-
 {% block title %}Faktúry{% endblock %}
 
-{% block styles %}
-<style>
-  /* Escapes any .container max-width */
-  .full-bleed {
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
-  }
-
-  .invoices-wrap {
-    padding: 0 24px; /* keep some breathing room on wide screens */
-  }
-
-  table { width: 100%; border-collapse: collapse; }
-  th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: left; }
-  th { background: #f8f9fa; }
-  .btn { margin-right: 6px; }
-
-
-
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="full-bleed">
-  <div class="invoices-wrap">
-    <h1 class="mb-4">Faktúry</h1>
-
-    <input type="text" id="invoiceSearch" class="form-control mb-4"
-           placeholder="Hľadaj faktúru podľa čísla, klienta alebo dátumu">
-
-    {% if message %}
-      <div class="alert alert-success">{{ message }}</div>
-    {% endif %}
-
-    {% if invoices %}
-    <div class="table-responsive">
-      <table>
-        <thead>
-          <tr>
-            <th>Číslo faktúry</th>
-            <th>Klient</th>
-            <th>Celkom</th>
-            <th>Status</th>
-            <th>Akcie</th>
-          </tr>
-        </thead>
-        <tbody id="invoicesList">
-          {% for invoice in invoices %}
-          <tr>
-            <td>{{ invoice.invoice_number }}</td>
-            <td>{{ invoice.client.name }}</td>
-            <td>{{ "%.2f"|format(invoice.total_cost) }} {{ invoice.currency }}</td>
-            <td><!-- Status placeholder --></td>
-            <td>
-              <a href="{{ url_for('main.view_invoice', invoice_id=invoice.id) }}" class="btn btn-primary btn-sm">Zobraziť</a>
-              <form method="POST" action="{{ url_for('main.delete_invoice', invoice_id=invoice.id) }}" style="display:inline;">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-danger btn-sm"
-                        onclick="return confirm('Ste si istý, že chcete zmazať túto faktúru?');">
-                  Zmazať
-                </button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+<div class="card">
+  <div class="card-header">
+    <div class="row w-100 align-items-center">
+      <div class="col">
+        <h2 class="card-title mb-0">Faktúry</h2>
+      </div>
+      <div class="col-auto ms-auto">
+        <div class="input-icon">
+          <span class="input-icon-addon"><i class="ti ti-search"></i></span>
+          <input id="invoiceSearch" type="text" class="form-control" placeholder="Hľadaj faktúru...">
+        </div>
+      </div>
     </div>
-    {% else %}
-      <p>Žiadne faktúry.</p>
-    {% endif %}
   </div>
 
-  
+  {% if message %}
+    <div class="alert alert-success m-3">{{ message }}</div>
+  {% endif %}
+
+  {% if invoices %}
+  <div class="table-responsive">
+    <table class="table table-vcenter">
+      <thead>
+        <tr>
+          <th>Číslo</th>
+          <th>Klient</th>
+          <th class="text-end">Celkom</th>
+          <th>Dátum splatnosti</th>
+          <th>Status</th>
+          <th class="text-nowrap">Akcie</th>
+        </tr>
+      </thead>
+      <tbody id="invoicesList">
+        {% for invoice in invoices %}
+        <tr>
+          <td class="text-nowrap">{{ invoice.invoice_number }}</td>
+          <td class="text-truncate">{{ invoice.client.name }}</td>
+          <td class="text-end">{{ "%.2f"|format(invoice.total_cost) }} {{ invoice.currency }}</td>
+          
+          <td>
+          {{ invoice.due_date.strftime('%d.%m.%Y') }}
+          </td>
+          <td>
+          {% if invoice.status == InvoiceStatus.paid %}
+              <span class="badge bg-success">Zaplatené</span>
+          {% elif invoice.is_overdue %}
+              <span class="badge bg-danger">Po splatnosti: {{ invoice.days_overdue }} dni</span>
+          {% else %}
+              <span class="badge bg-warning">Splatnosť o {{ invoice.days_until_due }} dní</span>
+          {% endif %}
+                  </td>
+          
+          
+          
+          
+          <td class="text-nowrap">
+
+
+          <form method="POST" action="{{ url_for('main.mark_invoice_paid', id=invoice.id) }}" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-primary">
+              <i class="ti ti-cash"></i> Zaplatená
+            </button>
+          </form>
+
+
+
+            <a href="{{ url_for('main.view_invoice', invoice_id=invoice.id) }}" class="btn btn-sm btn-primary">
+              <i class="ti ti-eye"></i> Zobraziť
+            </a>
+
+            
+            <form method="POST" action="{{ url_for('main.delete_invoice', invoice_id=invoice.id) }}" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-danger"
+                onclick="return confirm('Ste si istý, že chcete zmazať túto faktúru?');">
+                <i class="ti ti-trash"></i> Zmazať
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="card-body">
+      <p class="text-secondary">Žiadne faktúry.</p>
+    </div>
+  {% endif %}
 </div>
 
 <script>

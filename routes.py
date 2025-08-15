@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for,session, flash, send_file, abort
-from models import Client, Invoice, Company, InvoiceItem, User
+from models import Client, Invoice, Company, InvoiceItem, User, InvoiceStatus
 from datetime import datetime, timezone
 from difflib import get_close_matches
 from ai_chat import invoice_maker
@@ -10,6 +10,7 @@ import os
 import stripe
 from dotenv import load_dotenv
 from app import CSRFProtect, csrf
+import matplotlib.pyplot as plt
 
 
 
@@ -20,8 +21,15 @@ load_dotenv()
 main = Blueprint('main', __name__)
 
 
+
+
+
+
+# Initialize Stripe with your secret key
 #stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 stripe.api_key = 'sk_test_51RkrGoR3i42rl2ZpoVRD8uvf3DXr6Efj4AnqJ3pl5n2cg7JdS1VExdqPhC6Vox6SFYM5RMj3K7rqRG61RF7wCQOI00gYHXgMSD'
+
+
 
 
 @main.route('/account')
@@ -126,6 +134,10 @@ def cancel():
 
 
 
+
+# Registration and Login Routes
+
+
 @main.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegistrationForm()
@@ -182,10 +194,31 @@ def logout():
 @login_required
 def dashboard():
     invoices = Invoice.query.filter_by(user_id=current_user.id).order_by(Invoice.date.desc()).limit(5).all()
-    return render_template('dashboard.html', invoices=invoices)
+    return render_template('dashboard.html', invoices=invoices, InvoiceStatus=InvoiceStatus)
 
 
+@main.route('/graph')
+@login_required
+def dashboard_graph():
+    invoices = Invoice.query.filter_by(user_id=current_user.id).all()
+    if not invoices:
+        return "No invoices found for graphing.", 404
 
+    dates = [invoice.date for invoice in invoices]
+    total_costs = [invoice.total_cost for invoice in invoices]
+
+    plt.figure(figsize=(10, 5))
+    plt.plot(dates, total_costs, marker='o')
+    plt.title('Total Costs Over Time')
+    plt.xlabel('Date')
+    plt.ylabel('Total Cost')
+    plt.xticks(rotation=45)
+    
+    graph_path = 'static/dashboard_graph.png'
+    plt.savefig(graph_path)
+    plt.close()
+
+    return send_file(graph_path, mimetype='image/png')
 
 
 @main.route('/')
@@ -401,6 +434,33 @@ def my_company():
     return render_template('my_company.html', company=company)
 
 
+@main.route("/invoice/<int:id>/mark_paid", methods=["POST"])
+@login_required
+def mark_invoice_paid(id):
+    invoice = Invoice.query.filter_by(id=id, user_id=current_user.id).first_or_404()
+    invoice.status = "paid"   # assuming status is String, not Enum
+    db.session.commit()
+    flash(f"Faktúra {invoice.invoice_number} bola označená ako zaplatená.", "success")
+    return redirect(url_for("main.list_invoices"))
+
+@main.route("/invoice/<int:id>/overdue")
+@login_required
+def mark_invoice_overdue(id):
+    invoice = Invoice.query.filter_by(id=id, user_id=current_user.id).first_or_404()
+    if invoice.status == "paid":
+        flash(f"Faktúra {invoice.invoice_number} je už zaplatená a nemôže byť označená ako oneskorená.", "warning")
+        return redirect(url_for("main.list_invoices"))
+    if invoice.due_date >= datetime.now(timezone.utc).date():
+        flash(f"Faktúra {invoice.invoice_number} ešte nie je po termíne splatnosti.", "warning")
+        return redirect(url_for("main.list_invoices"))
+    # Ak je faktúra oneskorená, nastavíme status na "overdue"
+    invoice.status = "overdue"  # assuming status is String, not Enum
+    db.session.commit()
+    flash(f"Faktúra {invoice.invoice_number} bola označená ako oneskorená.", "success")
+    return redirect(url_for("main.list_invoices"))
+
+
+
 
 @main.route('/add_invoice', methods=['GET', 'POST'])
 @login_required
@@ -443,7 +503,8 @@ def add_invoice():
             
             client_id=int(request.form['client_id']),
             company_id=int(request.form['company_id']),
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
+            status=InvoiceStatus.unpaid  # Default status
         )
 
         db.session.add(invoice)
@@ -493,7 +554,12 @@ def view_invoice(invoice_id):
 @main.route('/invoices')
 @login_required
 def list_invoices():
-    return render_template('invoices.html', invoices=Invoice.query.filter_by(user_id=current_user.id).all())
+    invoices = Invoice.query.filter_by(user_id=current_user.id).all()
+    return render_template(
+        'invoices.html',
+        invoices=invoices,
+        InvoiceStatus=InvoiceStatus  # tu pošleš enum do šablóny
+    )
 
 @main.route('/ai_invoice', methods=['GET', 'POST'])
 @login_required
