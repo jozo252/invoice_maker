@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for,session, flash, send_file, abort
+from flask import Blueprint, render_template, request, redirect, url_for,session, flash, send_file, abort, jsonify
 from models import Client, Invoice, Company, InvoiceItem, User, InvoiceStatus
 from datetime import datetime, timezone
 from difflib import get_close_matches
@@ -11,6 +11,10 @@ import stripe
 from dotenv import load_dotenv
 from app import CSRFProtect, csrf
 import matplotlib.pyplot as plt
+from sqlalchemy import func, and_, or_
+from datetime import timedelta, date
+from sqlalchemy.orm import joinedload
+
 
 
 
@@ -193,32 +197,90 @@ def logout():
 @main.route('/dashboard')
 @login_required
 def dashboard():
-    invoices = Invoice.query.filter_by(user_id=current_user.id).order_by(Invoice.date.desc()).limit(5).all()
-    return render_template('dashboard.html', invoices=invoices, InvoiceStatus=InvoiceStatus)
+    q = (request.args.get('q') or '').strip()
+
+    query = (Invoice.query
+             .join(Client, Client.id == Invoice.client_id)
+             .filter(Invoice.user_id == current_user.id))
+
+    if q:
+        like = f"%{q}%"
+        query = query.filter(or_(
+            Invoice.invoice_number.ilike(like),
+            Client.name.ilike(like),
+            Invoice.currency.ilike(like)
+        ))
+
+    invoices = (query
+                .order_by(Invoice.date.desc(), Invoice.id.desc())
+                .limit(10)             # <-- max 10
+                .all())
+
+    return render_template('dashboard.html',
+                           invoices=invoices,
+                           q=q,
+                           InvoiceStatus=InvoiceStatus)
 
 
-@main.route('/graph')
+@main.route('/status-by-client')
 @login_required
-def dashboard_graph():
-    invoices = Invoice.query.filter_by(user_id=current_user.id).all()
-    if not invoices:
-        return "No invoices found for graphing.", 404
+def status_by_client():
+    months = int(request.args.get("months", 12))
+    top_n = int(request.args.get("top", 8))
+    since = date.today() - timedelta(days=30 * months)
 
-    dates = [invoice.date for invoice in invoices]
-    total_costs = [invoice.total_cost for invoice in invoices]
+    # Sum per client & status
+    rows = (
+        Invoice.query
+        .join(Client, Client.id == Invoice.client_id)
+        .with_entities(
+            Client.id.label("client_id"),
+            Client.name.label("client"),
+            Invoice.status.label("status"),
+            func.sum(Invoice.total_cost).label("amount")
+        )
+        .filter(
+            Invoice.user_id == current_user.id,
+            Invoice.date >= since
+        )
+        .group_by(Client.id, Client.name, Invoice.status)
+        .all()
+    )
 
-    plt.figure(figsize=(10, 5))
-    plt.plot(dates, total_costs, marker='o')
-    plt.title('Total Costs Over Time')
-    plt.xlabel('Date')
-    plt.ylabel('Total Cost')
-    plt.xticks(rotation=45)
-    
-    graph_path = 'static/dashboard_graph.png'
-    plt.savefig(graph_path)
-    plt.close()
+    # Pivot to {client: {"paid": x, "unpaid": y}}
+    agg = {}
+    for r in rows:
+        c = agg.setdefault((r.client_id, r.client), {"paid": 0.0, "unpaid": 0.0})
+        if r.status == InvoiceStatus.paid:
+            c["paid"] += float(r.amount or 0)
+        elif r.status == InvoiceStatus.unpaid:
+            c["unpaid"] += float(r.amount or 0)
+        # canceled ignored for cash picture
 
-    return send_file(graph_path, mimetype='image/png')
+    # Sort by total (paid + unpaid) desc
+    items = [ (cid, name, v["paid"], v["unpaid"]) for (cid, name), v in agg.items() ]
+    items.sort(key=lambda t: t[2] + t[3], reverse=True)
+
+    # Top N + Others
+    top = items[:top_n]
+    others = items[top_n:]
+    if others:
+        others_paid = round(sum(t[2] for t in others), 2)
+        others_unpaid = round(sum(t[3] for t in others), 2)
+        top.append( (None, "Others", others_paid, others_unpaid) )
+
+    labels = [name for _, name, _, _ in top]
+    paid =   [round(p, 2) for _, _, p, _ in top]
+    unpaid = [round(u, 2) for _, _, _, u in top]
+
+    return jsonify({
+        "labels": labels,
+        "datasets": [
+            {"label": "Paid", "data": paid},
+            {"label": "Unpaid", "data": unpaid},
+        ],
+        "currency": "EUR"
+    })
 
 
 @main.route('/')
