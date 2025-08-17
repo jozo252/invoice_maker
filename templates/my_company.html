@@ -59,10 +59,7 @@
         <label for="ic_dph">IČ DPH</label>
         <input type="text" name="ic_dph" value="{{ company.ic_dph if company else '' }}">
     </div>
-    <div>
-        <label for="payment_method">Spôsob úhrady</label>
-        <input type="text" name="payment_method" value="{{ company.payment_method if company else '' }}">
-    </div>
+    
     <div>
         <label for="iban">IBAN</label>
         <input type="text" name="iban" value="{{ company.iban if company else '' }}">

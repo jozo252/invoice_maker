@@ -5,6 +5,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 import enum
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import validates
+
 
 
 
@@ -57,7 +59,6 @@ class Client(db.Model):
         phone = db.Column(db.String(20), nullable=False)
         iban = db.Column(db.String(34), nullable=False)
         bic = db.Column(db.String(11), nullable=False)
-        payment_method = db.Column(db.String(50), nullable=False)
         is_vat_payer = db.Column(db.Boolean, default=False)
         ic_dph = db.Column(db.String(20), nullable=True)  # Optional field for VAT ID if the client is a VAT payer
 
@@ -68,9 +69,19 @@ class InvoiceStatus(enum.Enum):
     canceled = "canceled"
 
 
+class PaymentMethod(enum.Enum):
+    bank_transfer = "bank_transfer"
+    cash = "cash"
+    card = "card"          # ak nechceš karty, kľudne vyhoď
+    other = "other"
+
+
 
 class Invoice(db.Model):
         __tablename__ = 'invoices'
+        __table_args__ = (
+        db.UniqueConstraint('user_id', 'invoice_number', name='uq_user_invoice'),
+        )
         id = db.Column(db.Integer, primary_key=True)
         invoice_number = db.Column(db.String(50), nullable=False)
         date = db.Column(db.Date, nullable=False)
@@ -87,6 +98,9 @@ class Invoice(db.Model):
         items = db.relationship("InvoiceItem", back_populates="invoice", cascade="all, delete-orphan")
         created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))  # Timestamp when the invoice was created
         status = db.Column(db.Enum(InvoiceStatus), nullable=False, default=InvoiceStatus.unpaid)
+        pdf_path = db.Column(db.String(255), nullable=True)
+        payment_method = db.Column(db.Enum(PaymentMethod), nullable=False, default=PaymentMethod.bank_transfer)
+
         @hybrid_property
         def is_overdue(self):
             return self.status == InvoiceStatus.unpaid and date.today() > self.due_date
@@ -102,9 +116,20 @@ class Invoice(db.Model):
                 return "paid"
             return "overdue" if self.is_overdue else "waiting"
         
+        @validates('invoice_number')
+        def _normalize(self, key, value):
+            return (value or '').strip().upper()
+        
 
 
-     
+
+
+
+class InvoiceCounter(db.Model):
+    __tablename__ = 'invoice_counters'
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    year = db.Column(db.Integer, primary_key=True)
+    last_no = db.Column(db.Integer, nullable=False, default=0)
 
 class Company(db.Model):
         __tablename__ = 'companies'
@@ -122,7 +147,6 @@ class Company(db.Model):
         phone = db.Column(db.String(20), nullable=False)
         iban = db.Column(db.String(34), nullable=False)
         bic = db.Column(db.String(11), nullable=False)
-        payment_method = db.Column(db.String(50), nullable=False)
         is_vat_payer = db.Column(db.Boolean, default=False)
         ic_dph = db.Column(db.String(20), nullable=True)  # Optional field for VAT ID if the 
        

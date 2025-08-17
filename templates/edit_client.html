@@ -74,10 +74,7 @@
             <input type="text" name="bic" class="form-control" value="{{ client.bic }}">
         </div>
 
-        <div class="form-group">
-            <label>Spôsob úhrady</label>
-            <input type="text" name="payment_method" class="form-control" value="{{ client.payment_method }}">
-        </div>
+        
 
         <button type="submit" class="btn btn-primary mt-3">Uložiť zmeny</button>
         <a href="{{ url_for('main.list_clients') }}" class="btn btn-secondary mt-3">Zrušiť</a>

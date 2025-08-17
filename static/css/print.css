@@ -1,0 +1,6 @@
+@page { size: A4; margin: 12mm; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 11pt; }
+.no-print { display: none !important; } /* hides buttons like the print icon in PDF */
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { padding: 4px 6px; border-bottom: 1px solid #ddd; }
+h1, h4 { margin-bottom: .5rem; }

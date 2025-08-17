@@ -8,7 +8,21 @@ from flask_wtf import CSRFProtect
 from flask_login import LoginManager
 from models import User
 from flask_wtf import CSRFProtect
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+import sqlite3
 csrf = CSRFProtect()
+
+
+@event.listens_for(Engine, "connect")
+def _set_sqlite_pragma(dbapi_connection, connection_record):
+    # zapni iba pre SQLite, na Postgres/MySQL sa toto nespustí
+    if isinstance(dbapi_connection, sqlite3.Connection):
+        cur = dbapi_connection.cursor()
+        cur.execute("PRAGMA foreign_keys=ON;")
+        cur.close()
+
+
 
 load_dotenv()  # Load environment variables from .env file
 login_manager=LoginManager()

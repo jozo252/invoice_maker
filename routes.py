@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for,session, flash, send_file, abort, jsonify
-from models import Client, Invoice, Company, InvoiceItem, User, InvoiceStatus
+from models import Client, Invoice, Company, InvoiceItem, User, InvoiceStatus, PaymentMethod, InvoiceCounter
 from datetime import datetime, timezone
 from difflib import get_close_matches
 from ai_chat import invoice_maker
@@ -11,9 +11,15 @@ import stripe
 from dotenv import load_dotenv
 from app import CSRFProtect, csrf
 import matplotlib.pyplot as plt
-from sqlalchemy import func, and_, or_
+from sqlalchemy import func, and_, or_, text
 from datetime import timedelta, date
 from sqlalchemy.orm import joinedload
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
+from decimal import Decimal, ROUND_HALF_UP
+import io
+from segno import helpers as segno_helpers
+
 
 
 
@@ -424,7 +430,6 @@ def add_client():
             phone=request.form['phone'],
             iban=request.form['iban'],
             bic=request.form['bic'],
-            payment_method=request.form['payment_method'],
             is_vat_payer=is_vat_payer,
             ic_dph=request.form.get('ic_dph') if 'is_vat_payer' in request.form else None
         )
@@ -449,7 +454,6 @@ def edit_client(client_id):
         client.phone = request.form['phone']
         client.iban = request.form['iban']
         client.bic = request.form['bic']
-        client.payment_method = request.form['payment_method']
         client.is_vat_payer = 'is_vat_payer' in request.form
         client.ic_dph = request.form.get('ic_dph') if client.is_vat_payer else None
         db.session.commit()
@@ -485,7 +489,6 @@ def my_company():
         company.phone = request.form['phone']
         company.iban = request.form['iban']
         company.bic = request.form['bic']
-        company.payment_method = request.form['payment_method']
         company.is_vat_payer = request.form['is_vat_payer'] == 'True'
         company.ic_dph = request.form.get('ic_dph', '').strip() if company.is_vat_payer else None
 
@@ -521,7 +524,18 @@ def mark_invoice_overdue(id):
     flash(f"Faktúra {invoice.invoice_number} bola označená ako oneskorená.", "success")
     return redirect(url_for("main.list_invoices"))
 
-
+def next_invoice_number(user_id: int, d: date | None = None) -> str:
+    d = d or date.today()
+    y = d.year
+    # INSERT ... ON CONFLICT ... DO UPDATE ... RETURNING last_no
+    sql = text("""
+        INSERT INTO invoice_counters (user_id, year, last_no)
+        VALUES (:uid, :y, 0)
+        ON CONFLICT(user_id, year) DO UPDATE SET last_no = last_no + 1
+        RETURNING last_no
+    """)
+    res = db.session.execute(sql, {"uid": user_id, "y": y}).scalar_one()
+    return f"{y}-{int(res):04d}"
 
 
 @main.route('/add_invoice', methods=['GET', 'POST'])
@@ -530,55 +544,126 @@ def add_invoice():
     clients = Client.query.filter_by(user_id=current_user.id).all()
     companies = Company.query.filter_by(user_id=current_user.id).all()
 
-
     if request.method == 'POST':
-        items = []
-        total_cost = 0
+        # --- 1) číslo faktúry: normalizácia + preflight unikátnosti ---
+        invoice_number = (request.form.get('invoice_number') or '').strip().upper()
+        if not invoice_number:
+            flash('Vyplň číslo faktúry (alebo si sprav autogeneráciu).', 'danger')
+            return render_template('add_invoice.html', clients=clients, companies=companies)
 
+        dup = db.session.query(
+            db.exists().where(and_(
+                Invoice.user_id == current_user.id,
+                Invoice.invoice_number == invoice_number
+            ))
+        ).scalar()
+        if dup:
+            flash('Toto číslo faktúry už používaš. Zvoľ iné.', 'danger')
+            return render_template('add_invoice.html', clients=clients, companies=companies)
+
+        # --- 2) validácia klienta/firmy: musia patriť userovi ---
+        try:
+            client_id = int(request.form['client_id'])
+            company_id = int(request.form['company_id'])
+        except Exception:
+            flash('Vyber klienta a firmu.', 'danger')
+            return render_template('add_invoice.html', clients=clients, companies=companies)
+
+        client_ok = Client.query.filter_by(id=client_id, user_id=current_user.id).first()
+        company_ok = Company.query.filter_by(id=company_id, user_id=current_user.id).first()
+        if not client_ok or not company_ok:
+            abort(403)
+
+        # --- 3) položky: vyčisti prázdne riadky + spočítaj total (Decimal) ---
         descriptions = request.form.getlist('description[]')
-        quantities = request.form.getlist('quantity[]')
-        units = request.form.getlist('unit[]')
-        prices = request.form.getlist('price_per_item[]')
+        quantities   = request.form.getlist('quantity[]')
+        units        = request.form.getlist('unit[]')
+        prices       = request.form.getlist('price_per_item[]')
+
+        items: list[InvoiceItem] = []
+        total_cost = Decimal('0.00')
 
         for desc, qty, unit, price in zip(descriptions, quantities, units, prices):
-            qty = float(qty)
-            price = float(price)
-            item_total = qty * price
-            total_cost += item_total
+            desc = (desc or '').strip()
+            unit = (unit or '').strip()
+            if not desc or not qty or not price:
+                continue
+            try:
+                # quantity máš v modeli Integer → drž sa int
+                q = int(Decimal(str(qty)))
+                p = Decimal(str(price))
+            except Exception:
+                continue
+            if q <= 0 or p < 0:
+                continue
 
+            item_total = (p * q).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
             items.append(InvoiceItem(
                 description=desc,
-                quantity=qty,
+                quantity=q,
                 unit=unit,
-                price_per_item=price,
-                total_cost=item_total
+                price_per_item=float(p),
+                total_cost=float(item_total)
             ))
+            total_cost += item_total
+
+        if not items:
+            flash('Pridaj aspoň jednu platnú položku.', 'danger')
+            return render_template('add_invoice.html', clients=clients, companies=companies)
+
+        # --- 4) vytvor invoice ---
+        try:
+            date_obj = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
+            due_obj  = datetime.strptime(request.form['due_date'], '%Y-%m-%d').date()
+        except Exception:
+            flash('Dátum alebo splatnosť sú neplatné.', 'danger')
+            return render_template('add_invoice.html', clients=clients, companies=companies)
+
+        vat_rate = request.form.get('vat_rate', '0').strip()
+        try:
+            vat_rate = float(vat_rate or 0.0)
+        except Exception:
+            vat_rate = 0.0
+
+
+
+        pm_raw = (request.form.get('payment_method') or 'bank_transfer').strip()
+        allowed = {'bank_transfer','cash','card','other'}
+        if pm_raw not in allowed:
+            pm_raw = 'bank_transfer'
 
         invoice = Invoice(
-            invoice_number=request.form['invoice_number'],
-            date=datetime.strptime(request.form['date'], '%Y-%m-%d').date(),
-            due_date=datetime.strptime(request.form['due_date'], '%Y-%m-%d').date(),
+            invoice_number=invoice_number,
+            date=date_obj,
+            due_date=due_obj,
             currency=request.form['currency'],
-            vat_rate=float(request.form.get('vat_rate', 0.0)),
-            total_cost=total_cost,
+            vat_rate=vat_rate,
+            total_cost=float(total_cost),  # čistá suma podľa položiek (bez DPH, ak to tak máš)
             user_id=current_user.id,
-            
-            client_id=int(request.form['client_id']),
-            company_id=int(request.form['company_id']),
+            client_id=client_id,
+            company_id=company_id,
             created_at=datetime.now(timezone.utc),
-            status=InvoiceStatus.unpaid  # Default status
+            status=InvoiceStatus.unpaid,
+            payment_method=PaymentMethod(pm_raw)   # ← sem
+
         )
 
         db.session.add(invoice)
-        db.session.flush()  # vloží invoice.id bez commitu
-
+        # napoj položky cez relationship (žiadny ručný assign id)
         for item in items:
-            item.invoice_id = invoice.id
-            db.session.add(item)
+            invoice.items.append(item)
 
-        db.session.commit()
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            # DB fallback – ak medzičasom niekto (ty v druhom tabu) zaregistroval rovnaké číslo
+            flash('Toto číslo faktúry už používaš (DB). Zvoľ iné.', 'danger')
+            return render_template('add_invoice.html', clients=clients, companies=companies)
+
         return redirect(url_for('main.view_invoice', invoice_id=invoice.id))
 
+    # GET
     return render_template('add_invoice.html', clients=clients, companies=companies)
 
 @main.route('/show_ai_invoice/<int:invoice_id>', methods=['GET', 'POST'])
@@ -604,14 +689,54 @@ def view_ai_invoice(invoice_id):
         items=invoice.items
     )
 
+def epc_qr_svg(*, recipient_name: str, iban: str, amount_eur: Decimal,
+               text: str, bic: str | None = None, scale: int = 4) -> str:
+    name = (recipient_name or "")[:70]
+    rem_text = (text or "")[:140]
+    iban_clean = (iban or "").replace(" ", "")
+    amt = amount_eur.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    qr = segno_helpers.make_epc_qr(
+        name=name,
+        iban=iban_clean,
+        encoding='UTF-8',
+        amount=amt,
+        text=rem_text,
+        bic=bic or None
+    )
+
+    # 🔧 segno sometimes writes bytes → capture as bytes, then decode
+    buf = io.BytesIO()
+    qr.save(buf, kind="svg", scale=scale, xmldecl=False)
+    svg_str = buf.getvalue().decode("utf-8")
+    return svg_str
+
+
 
 @main.route('/invoice/<int:invoice_id>')
 @login_required
 def view_invoice(invoice_id):
-    invoice = Invoice.query.filter_by(id=invoice_id, user_id=current_user.id).first_or_404()
-    if not invoice.company:
-        return "Company information is not set up. Please set up your company first.", 400
-    return render_template("invoice.html", invoice_data=invoice, client_data=invoice.client, company_data=invoice.company, items=invoice.items)
+    invoice = (Invoice.query
+        .options(joinedload(Invoice.company), joinedload(Invoice.client), joinedload(Invoice.items))
+        .filter(Invoice.id==invoice_id, Invoice.user_id==current_user.id)
+        .first_or_404())
+
+    # brutto suma do QR
+    base = Decimal(str(invoice.total_cost))
+    vat  = Decimal(str(invoice.vat_rate or 0)) / Decimal(100)
+    amount_due = (base * (Decimal(1)+vat)).quantize(Decimal("0.01"))
+
+    qr_svg = None
+    if invoice.company and invoice.company.iban:
+        qr_svg = epc_qr_svg(
+            recipient_name=invoice.company.name,
+            iban=invoice.company.iban,
+            bic=invoice.company.bic,
+            amount_eur=amount_due,
+            text=f"Invoice {invoice.invoice_number}"
+        )
+
+    return render_template("invoice.html", invoice=invoice, qr_svg=qr_svg)
 
 @main.route('/invoices')
 @login_required

@@ -3,6 +3,13 @@
 {% block content %}
 <div class="container mt-5">
   <h2>Vytvoriť faktúru</h2>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} mt-2">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+                {% endwith %}
   <form method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -50,6 +57,15 @@
         <input type="number" step="0.01" name="vat_rate" class="form-control" value="0">
       </div>
     </div>
+    <div class="mb-3">
+  <label for="payment_method" class="form-label">Spôsob úhrady</label>
+  <select id="payment_method" name="payment_method" class="form-select">
+    <option value="bank_transfer" selected>Bankový prevod</option>
+    <option value="cash">Hotovosť</option>
+    <option value="card">Karta</option>
+    <option value="other">Iné</option>
+  </select>
+</div>
 
     <h4>Položky</h4>
     <table class="table table-bordered" id="items-table">
