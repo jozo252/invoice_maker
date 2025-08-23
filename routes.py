@@ -10,7 +10,6 @@ import os
 import stripe
 from dotenv import load_dotenv
 from app import CSRFProtect, csrf
-import matplotlib.pyplot as plt
 from sqlalchemy import func, and_, or_, text
 from datetime import timedelta, date
 from sqlalchemy.orm import joinedload

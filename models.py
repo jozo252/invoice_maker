@@ -97,10 +97,11 @@ class Invoice(db.Model):
         client = db.relationship('Client', backref=db.backref('invoices', lazy=True))
         items = db.relationship("InvoiceItem", back_populates="invoice", cascade="all, delete-orphan")
         created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))  # Timestamp when the invoice was created
-        status = db.Column(db.Enum(InvoiceStatus), nullable=False, default=InvoiceStatus.unpaid)
+        status = db.Column(db.Enum(InvoiceStatus, name="invoicestatus",
+                           native_enum=False, validate_strings=True), nullable=False, default=InvoiceStatus.unpaid)
         pdf_path = db.Column(db.String(255), nullable=True)
-        payment_method = db.Column(db.Enum(PaymentMethod), nullable=False, default=PaymentMethod.bank_transfer)
-
+        payment_method = db.Column(db.Enum(PaymentMethod, name="paymentmethod",
+                                   native_enum=False, validate_strings=True), nullable=False, default=PaymentMethod.bank_transfer)
         @hybrid_property
         def is_overdue(self):
             return self.status == InvoiceStatus.unpaid and date.today() > self.due_date
