@@ -1,0 +1,12 @@
+cat > .gitignore <<'EOF'
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual env
+venv/
+
+# Local secrets & DB
+.env
+instance/*.db
+EOF
