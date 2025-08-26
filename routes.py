@@ -9,7 +9,7 @@ from pdf_generator import render_invoice_to_pdf
 import os
 import stripe
 from dotenv import load_dotenv
-from app import CSRFProtect, csrf
+from app import CSRFProtect, csrf, create_app
 from sqlalchemy import func, and_, or_, text
 from datetime import timedelta, date
 from sqlalchemy.orm import joinedload
@@ -35,8 +35,7 @@ main = Blueprint('main', __name__)
 
 
 # Initialize Stripe with your secret key
-#stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
-stripe.api_key = 'sk_test_51RkrGoR3i42rl2ZpoVRD8uvf3DXr6Efj4AnqJ3pl5n2cg7JdS1VExdqPhC6Vox6SFYM5RMj3K7rqRG61RF7wCQOI00gYHXgMSD'
+
 
 
 
@@ -55,10 +54,10 @@ def pricing():
 @csrf.exempt
 @main.route('/webhook', methods=['POST'])
 def stripe_webhook():
+    stripe.api_key = create_app.config('STRIPE_SECRET_KEY')
     payload = request.data
     sig_header = request.headers.get('Stripe-Signature')
-    #endpoint_secret = os.getenv('STRIPE_ENDPOINT_SECRET')
-    endpoint_secret = "whsec_8efa6bc0c0e56abfc1b9884a34387fc4cf054f8f8c7ce9a290d86a8de20106d2"
+    endpoint_secret = create_app.config["STRIPE_WEBHOOK_SECRET"]
     
 
     
@@ -104,11 +103,12 @@ def stripe_webhook():
 @main.route('/create-checkout-session')
 @login_required
 def create_checkout_session():
+    stripe.api_key = create_app.config('STRIPE_SECRET_KEY')
     session = stripe.checkout.Session.create(
         payment_method_types=['card'],
         mode='subscription',
         line_items=[{
-            'price': 'price_1RkrMFR3i42rl2ZpALUc24pX',
+            'price': create_app.config['STRIPE_PRICE_ID'],  # replace with your price ID
             'quantity': 1,
         }],
         success_url=url_for('main.success', _external=True) + '?session_id={CHECKOUT_SESSION_ID}',

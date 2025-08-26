@@ -31,7 +31,6 @@ def create_app():
     
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///invoices.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
     app.config['MAIL_SERVER'] = 'smtp.gmail.com'
     app.config['MAIL_PORT'] = 587
     app.config['MAIL_USE_TLS'] = True
@@ -39,6 +38,7 @@ def create_app():
     app.config['MAIL_PASSWORD'] = os.getenv('SMTP_password')
     app.config['MAIL_DEFAULT_SENDER'] = 'adamgallik11@gmail.com'
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')  # ✅ správne napísané
+    app.config["STRIPE_WEBHOOK_SECRET"] = os.getenv("STRIPE_WEBHOOK_SECRET")
 
     
 
