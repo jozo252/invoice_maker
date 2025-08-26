@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for,session, flash, send_file, abort, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for,session, flash, send_file, abort, jsonify, current_app
 from models import Client, Invoice, Company, InvoiceItem, User, InvoiceStatus, PaymentMethod, InvoiceCounter
 from datetime import datetime, timezone
 from difflib import get_close_matches
@@ -9,7 +9,7 @@ from pdf_generator import render_invoice_to_pdf
 import os
 import stripe
 from dotenv import load_dotenv
-from app import CSRFProtect, csrf, create_app
+from app import CSRFProtect, csrf
 from sqlalchemy import func, and_, or_, text
 from datetime import timedelta, date
 from sqlalchemy.orm import joinedload
@@ -54,10 +54,10 @@ def pricing():
 @csrf.exempt
 @main.route('/webhook', methods=['POST'])
 def stripe_webhook():
-    stripe.api_key = create_app.config('STRIPE_SECRET_KEY')
+    stripe.api_key = current_app.config["STRIPE_API_KEY"]
     payload = request.data
-    sig_header = request.headers.get('Stripe-Signature')
-    endpoint_secret = create_app.config["STRIPE_WEBHOOK_SECRET"]
+    sig_header = request.headers.get("Stripe-Signature", "")
+    endpoint_secret = current_app.config["STRIPE_WEBHOOK_SECRET"]
     
 
     
@@ -103,12 +103,12 @@ def stripe_webhook():
 @main.route('/create-checkout-session')
 @login_required
 def create_checkout_session():
-    stripe.api_key = create_app.config('STRIPE_SECRET_KEY')
+    stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
     session = stripe.checkout.Session.create(
         payment_method_types=['card'],
         mode='subscription',
         line_items=[{
-            'price': create_app.config['STRIPE_PRICE_ID'],  # replace with your price ID
+            'price': current_app.config['STRIPE_PRICE_ID'],  # replace with your price ID
             'quantity': 1,
         }],
         success_url=url_for('main.success', _external=True) + '?session_id={CHECKOUT_SESSION_ID}',
