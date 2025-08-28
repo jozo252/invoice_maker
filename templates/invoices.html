@@ -58,7 +58,9 @@
           
           
           <td class="text-nowrap">
-
+            {% if invoice.status == InvoiceStatus.unpaid %}
+              <a href="{{ url_for('main.edit_invoice', invoice_id=invoice.id) }}" class="btn btn-sm btn-warning ">Upraviť</a>
+            {% endif %}
 
           <form method="POST" action="{{ url_for('main.mark_invoice_paid', id=invoice.id) }}" style="display:inline;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

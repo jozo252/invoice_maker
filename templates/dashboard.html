@@ -83,13 +83,7 @@
             <a href="{{ url_for('main.view_invoice', invoice_id=invoice.id) }}" class="btn btn-sm btn-primary">
               <i class="ti ti-eye"></i> Zobraziť
             </a>
-            <form method="POST" action="{{ url_for('main.delete_invoice', invoice_id=invoice.id) }}" style="display:inline;">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-sm btn-danger"
-                onclick="return confirm('Ste si istý, že chcete zmazať túto faktúru?');">
-                <i class="ti ti-trash"></i> Zmazať
-              </button>
-            </form>
+            
           </td>
         </tr>
         {% endfor %}

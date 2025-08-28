@@ -39,6 +39,11 @@ def create_app():
     app.config['MAIL_DEFAULT_SENDER'] = 'adamgallik11@gmail.com'
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')  # ✅ správne napísané
     app.config["STRIPE_WEBHOOK_SECRET"] = os.getenv("STRIPE_WEBHOOK_SECRET")
+    app.config["STRIPE_API_KEY"] = os.getenv("STRIPE_API_KEY")
+    app.config["STRIPE_PUBLIC_KEY"] = os.getenv("STRIPE_PUBLIC_KEY")
+    app.config["STRIPE_PRICE_ID"] = os.getenv("STRIPE_PRICE_ID")
+    app.config["SUCCESS_URL"] = os.getenv("SUCCESS_URL")    
+    
 
     
 

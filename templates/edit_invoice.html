@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+  <h1>Upraviť faktúru #{{ invoice.invoice_number }}</h1>
+  <form method="post" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="row g-3 my-3">
+      <div class="col-md-3">
+        <label class="form-label">Číslo faktúry</label>
+        <input name="invoice_number" class="form-control" value="{{ invoice.invoice_number }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Dátum vystavenia</label>
+        <input name="date" type="date" class="form-control" value="{{ invoice.date.strftime('%Y-%m-%d') }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Splatnosť</label>
+        <input name="due_date" type="date" class="form-control" value="{{ invoice.due_date.strftime('%Y-%m-%d') }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Mena</label>
+        <input name="currency" class="form-control" value="{{ invoice.currency }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Sadzba DPH (%)</label>
+        <input name="vat_rate" type="number" step="0.01" class="form-control" value="{{ invoice.vat_rate or 0 }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Spôsob úhrady</label>
+        <select name="payment_method" class="form-select">
+          <option value="bank_transfer" {{ 'selected' if invoice.payment_method.value == 'bank_transfer' }}>Bankový prevod</option>
+          <option value="cash" {{ 'selected' if invoice.payment_method.value == 'cash' }}>Hotovosť</option>
+        </select>
+      </div>
+    </div>
+
+    <h4 class="mt-4">Odberateľ</h4>
+    <div class="row g-3">
+      <div class="col-md-6"><input name="client_name" class="form-control" placeholder="Názov" value="{{ invoice.client.name }}"></div>
+      <div class="col-md-6"><input name="client_street" class="form-control" placeholder="Ulica" value="{{ invoice.client.street }}"></div>
+      <div class="col-md-3"><input name="client_zip" class="form-control" placeholder="PSČ" value="{{ invoice.client.zip_code }}"></div>
+      <div class="col-md-3"><input name="client_city" class="form-control" placeholder="Mesto" value="{{ invoice.client.city }}"></div>
+      <div class="col-md-3"><input name="client_country" class="form-control" placeholder="Krajina" value="{{ invoice.client.country }}"></div>
+      <div class="col-md-3"><input name="client_ico" class="form-control" placeholder="IČO" value="{{ invoice.client.ico }}"></div>
+      <div class="col-md-3"><input name="client_dic" class="form-control" placeholder="DIČ" value="{{ invoice.client.dic }}"></div>
+      <div class="col-md-3"><input name="client_ic_dph" class="form-control" placeholder="IČ DPH" value="{{ invoice.client.ic_dph }}"></div>
+    </div>
+
+    <h4 class="mt-4">Položky</h4>
+    <table class="table" id="items-table">
+      <thead>
+        <tr>
+          <th>Popis</th><th class="text-end">Množstvo</th><th>MJ</th>
+          <th class="text-end">Cena/MJ</th><th class="text-end">Celkom</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="items-body">
+        {% for item in invoice.items %}
+
+        <tr>
+          <td><input name="items[{{ i }}][description]" class="form-control" value="{{ item.description }}"></td>
+          <td><input name="items[{{ i }}][quantity]" type="number" step="0.001" class="form-control text-end" value="{{ item.quantity }}"></td>
+          <td><input name="items[{{ i }}][unit]" class="form-control" value="{{ item.unit or '' }}"></td>
+          <td><input name="items[{{ i }}][price_per_item]" type="number" step="0.01" class="form-control text-end" value="{{ '%.2f'|format(item.price_per_item) }}"></td>
+          <td class="text-end total-cell">{{ '%.2f'|format(item.total_cost) }} {{ invoice.currency }}</td>
+          <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow(this)">×</button></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="add-row">+ Pridať položku</button>
+
+    <div class="d-flex justify-content-end gap-2 mt-4">
+      <a href="{{ url_for('main.view_invoice', invoice_id=invoice.id) }}" class="btn btn-light">Zrušiť</a>
+      <button type="submit" class="btn btn-primary">Uložiť zmeny</button>
+    </div>
+  </form>
+</div>
+
+<script>
+(function(){
+  const tbody = document.getElementById('items-body');
+  const addBtn = document.getElementById('add-row');
+
+  function rowIndex() { return tbody.querySelectorAll('tr').length; }
+
+  addBtn.addEventListener('click', () => {
+    const i = rowIndex();
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input name="items[${i}][description]" class="form-control"></td>
+      <td><input name="items[${i}][quantity]" type="number" step="0.001" class="form-control text-end" value="1"></td>
+      <td><input name="items[${i}][unit]" class="form-control" value="ks"></td>
+      <td><input name="items[${i}][price_per_item]" type="number" step="0.01" class="form-control text-end" value="0.00"></td>
+      <td class="text-end total-cell">0.00 {{ "{{ invoice.currency }}" }}</td>
+      <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow(this)">×</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  window.removeRow = (btn) => {
+    const tr = btn.closest('tr');
+    tr.remove();
+    // reindex names to keep server parsing simple
+    [...tbody.querySelectorAll('tr')].forEach((row, idx) => {
+      row.querySelectorAll('input').forEach(input => {
+        input.name = input.name.replace(/items\[\d+\]/, `items[${idx}]`);
+      });
+    });
+  };
+
+  // live total calc
+  tbody.addEventListener('input', (e) => {
+    const tr = e.target.closest('tr');
+    const qty = parseFloat(tr.querySelector('input[name*="[quantity]"]').value || 0);
+    const ppi = parseFloat(tr.querySelector('input[name*="[price_per_item]"]').value || 0);
+    const cell = tr.querySelector('.total-cell');
+    cell.textContent = (qty * ppi).toFixed(2) + " {{ invoice.currency  }}";
+  });
+})();
+</script>
+{% endblock %}

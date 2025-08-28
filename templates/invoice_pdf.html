@@ -2,7 +2,7 @@
 <html lang="sk">
 <head>
     <meta charset="UTF-8">
-    <title>Faktúra {{ invoice_data.invoice_number }}</title>
+    <title>Faktúra {{ invoice.invoice_number }}</title>
     <style>
         body {
             font-family: "Helvetica", Arial, sans-serif;
@@ -46,73 +46,100 @@
 </head>
 <body>
 
-    <h1>Faktúra č.: {{ invoice_data.invoice_number }}</h1>
+    <h1>Faktúra č.: {{ invoice.invoice_number }}</h1>
 
     <table style="width: 100%; margin-bottom: 25px;">
-  <tr>
-    <td style="width: 49%; vertical-align: top;">
-      <h3>Dodávateľ</h3>
-      <p><strong>{{ company_data.name }}</strong></p>
-      <p>{{ company_data.street }}</p>
-      <p>{{ company_data.zip_code }} {{ company_data.city }}</p>
-      <p>{{ company_data.country }}</p>
-      <p>IČO: {{ company_data.ico }}</p>
-      <p>DIČ: {{ company_data.dic }}</p>
-      {% if company_data.is_vat_payer and company_data.ic_dph %}
-        <p>IČ DPH: {{ company_data.ic_dph }}</p>
-      {% else %}
-        <p><em>Dodávateľ nie je platiteľom DPH</em></p>
-      {% endif %}
-      <p>Email: {{ company_data.email }}</p>
-      <p>Telefón: {{ company_data.phone }}</p>
-      <p>IBAN: {{ company_data.iban }}</p>
-      <p>BIC/SWIFT: {{ company_data.bic }}</p>
-    </td>
+      <tr>
+        <td style="width: 49%; vertical-align: top;">
+          <h3>Dodávateľ</h3>
+          <p><strong>{{ invoice.company.name }}</strong></p>
+          <p>{{ invoice.company.street }}</p>
+          <p>{{ invoice.company.zip_code }} {{ invoice.company.city }}</p>
+          <p>{{ invoice.company.country }}</p>
+          <p>IČO: {{ invoice.company.ico }}</p>
+          <p>DIČ: {{ invoice.company.dic }}</p>
+          {% if invoice.company.is_vat_payer and invoice.company.ic_dph %}
+            <p>IČ DPH: {{ invoice.company.ic_dph }}</p>
+          {% else %}
+            <p><em>Dodávateľ nie je platiteľom DPH</em></p>
+          {% endif %}
+          <p>Email: {{ invoice.company.email }}</p>
+          <p>Telefón: {{ invoice.company.phone }}</p>
+          <p>IBAN: {{ invoice.company.iban }}</p>
+          <p>BIC/SWIFT: {{ invoice.company.bic }}</p>
+        </td>
 
-    <td style="width: 49%; vertical-align: top;">
-      <h3>Odberateľ</h3>
-      <p><strong>{{ client_data.name }}</strong></p>
-      <p>{{ client_data.street }}</p>
-      <p>{{ client_data.zip_code }} {{ client_data.city }}</p>
-      <p>{{ client_data.country }}</p>
-      <p>IČO: {{ client_data.ico }}</p>
-      <p>DIČ: {{ client_data.dic }}</p>
-      {% if client_data.ic_dph %}
-        <p>IČ DPH: {{ client_data.ic_dph }}</p>
-      {% else %}
-        <p><em>Odberateľ nie je platiteľom DPH</em></p>
-      {% endif %}
-      <p>Email: {{ client_data.email }}</p>
-      <p>Telefón: {{ client_data.phone }}</p>
-      {% if client_data.iban %}
-        <p>IBAN: {{ client_data.iban }}</p>
-      {% endif %}
-      {% if client_data.bic %}
-        <p>BIC/SWIFT: {{ client_data.bic }}</p>
-      {% endif %}
-    </td>
-  </tr>
-</table>
+        <td style="width: 49%; vertical-align: top;">
+          <h3>Odberateľ</h3>
+          <p><strong>{{ invoice.client.name }}</strong></p>
+          <p>{{ invoice.client.street }}</p>
+          <p>{{ invoice.client.zip_code }} {{ invoice.client.city }}</p>
+          <p>{{ invoice.client.country }}</p>
+          <p>IČO: {{ invoice.client.ico }}</p>
+          <p>DIČ: {{ invoice.client.dic }}</p>
+          {% if invoice.client.ic_dph %}
+            <p>IČ DPH: {{ invoice.client.ic_dph }}</p>
+          {% else %}
+            <p><em>Odberateľ nie je platiteľom DPH</em></p>
+          {% endif %}
+          <p>Email: {{ invoice.client.email }}</p>
+          <p>Telefón: {{ invoice.client.phone }}</p>
+          {% if invoice.client.iban %}
+            <p>IBAN: {{ invoice.client.iban }}</p>
+          {% endif %}
+          {% if invoice.client.bic %}
+            <p>BIC/SWIFT: {{ invoice.client.bic }}</p>
+          {% endif %}
+        </td>
+      </tr>
+    </table>
 
     <div class="section">
-        <p><strong>Spôsob úhrady:</strong> {{ company_data.payment_method }}</p>
-        <table style="width: 100%; margin-top: 20px; margin-bottom: 30px;">
-  <tr>
-    <td style="text-align: center;">
-      <small>Dátum vystavenia</small><br>
-      <strong>{{ invoice_data.date.strftime('%d.%m.%Y') }}</strong>
-    </td>
-    <td style="text-align: center;">
-      <small>Dátum dodania</small><br>
-      <strong>{{ invoice_data.date.strftime('%d.%m.%Y') }}</strong>
-    </td>
-    <td style="text-align: center;">
-      <small>Splatnosť faktúry</small><br>
-      <strong>{{ invoice_data.due_date.strftime('%d.%m.%Y') }}</strong>
-    </td>
-  </tr>
-</table>
+      <div class="card my-4 p-3">
 
+    <p><strong>Spôsob úhrady:</strong>
+      {% if invoice.payment_method.value == 'bank_transfer' %}
+  <div class="d-flex align-items-start flex-wrap gap-4" style="page-break-inside: avoid;">
+    <!-- Ľavý blok: IBAN/BIC -->
+    <div class="pe-3">
+      <p class="mb-1"><strong>IBAN:</strong> {{ invoice.company.iban }}</p>
+      <p class="mb-0"><strong>BIC:</strong> {{ invoice.company.bic }}</p>
+    </div>
+
+    <!-- Pravý blok: QR -->
+    {% if qr_svg %}
+      <div class="ms-auto text-center" style="min-width: 180px;">
+        <div style="width:170px">{{ qr_svg|safe }}</div>
+        <div class="text-muted small mt-1">
+          IBAN: {{ invoice.company.iban }} • VS: {{ invoice.invoice_number }}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+
+      {% elif invoice.payment_method == 'PaymentMethod.cash' %}
+        <p><strong>Spôsob úhrady:</strong> Hotovosť</p>
+      {% elif invoice.payment_method == 'PaymentMethod.card' %}
+        <p><strong>Spôsob úhrady:</strong> Platobná karta</p>
+      {% endif %}
+
+        <table style="width: 100%; margin-top: 20px; margin-bottom: 30px;">
+          <tr>
+            <td style="text-align: center;">
+              <small>Dátum vystavenia</small><br>
+              <strong>{{ invoice.date.strftime('%d.%m.%Y') }}</strong>
+            </td>
+            <td style="text-align: center;">
+              <small>Dátum dodania</small><br>
+              <strong>{{ invoice.date.strftime('%d.%m.%Y') }}</strong>
+            </td>
+            <td style="text-align: center;">
+              <small>Splatnosť faktúry</small><br>
+              <strong>{{ invoice.due_date.strftime('%d.%m.%Y') }}</strong>
+            </td>
+          </tr>
+        </table>
     </div>
 
     <table class="table">
@@ -126,42 +153,42 @@
             </tr>
         </thead>
         <tbody>
-  {% for item in invoice_data.items %}
-    <tr>
-      <td>{{ item.description }}</td>
-      <td>{{ item.quantity }}</td>
-      <td>{{ item.unit or '' }}</td>
-      <td>{{ "%.2f"|format(item.price_per_item) }} {{ invoice_data.currency }}</td>
-      <td>{{ "%.2f"|format(item.total_cost) }} {{ invoice_data.currency }}</td>
-    </tr>
-  {% endfor %}
-</tbody>
+          {% for item in invoice.items %}
+            <tr>
+              <td>{{ item.description }}</td>
+              <td>{{ item.quantity }}</td>
+              <td>{{ item.unit or '' }}</td>
+              <td>{{ "%.2f"|format(item.price_per_item) }} {{ invoice.currency }}</td>
+              <td>{{ "%.2f"|format(item.total_cost) }} {{ invoice.currency }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
     </table>
 
     <div class="totals">
-        {% if company_data.is_vat_payer %}
-            <p>Základ DPH: {{ "%.2f"|format(invoice_data.total_cost) }} {{ invoice_data.currency }}</p>
-            <p>Sadzba DPH: {{ invoice_data.vat_rate }}%</p>
-            <p>DPH: {{ "%.2f"|format(invoice_data.total_cost * invoice_data.vat_rate / 100) }} {{ invoice_data.currency }}</p>
-            <h3>Spolu: {{ "%.2f"|format(invoice_data.total_cost * (1 + invoice_data.vat_rate / 100)) }} {{ invoice_data.currency }}</h3>
+        {% if invoice.company.is_vat_payer %}
+            <p>Základ DPH: {{ "%.2f"|format(invoice.total_cost) }} {{ invoice.currency }}</p>
+            <p>Sadzba DPH: {{ invoice.vat_rate }}%</p>
+            <p>DPH: {{ "%.2f"|format(invoice.total_cost * invoice.vat_rate / 100) }} {{ invoice.currency }}</p>
+            <h3>Spolu: {{ "%.2f"|format(invoice.total_cost * (1 + invoice.vat_rate / 100)) }} {{ invoice.currency }}</h3>
         {% else %}
-            <h3>Celkom: {{ invoice_data.total_cost }} {{ invoice_data.currency }}</h3>
+            <h3>Celkom: {{ "%.2f"|format(invoice.total_cost) }} {{ invoice.currency }}</h3>
         {% endif %}
     </div>
 
     <table style="width: 100%; margin-top: 50px;">
-  <tr>
-    <td style="width: 50%; text-align: center;">
-      <strong>Vyhotovil:</strong><br>
-      <img src="{{ url_for('static', filename='stamp.png', _external=True) }}" alt="Stamp" style="max-height: 80px;"><br>
-      <hr style="width: 10em;">
-    </td>
-    <td style="width: 50%; text-align: center;">
-      <strong>Prevzal:</strong><br><br><br><br>
-      <hr style="width: 10em;">
-    </td>
-  </tr>
-</table>
+      <tr>
+        <td style="width: 50%; text-align: center;">
+          <strong>Vyhotovil:</strong><br>
+          <img src="{{ url_for('static', filename='stamp.png', _external=True) }}" alt="Stamp" style="max-height: 80px;"><br>
+          <hr style="width: 10em;">
+        </td>
+        <td style="width: 50%; text-align: center;">
+          <strong>Prevzal:</strong><br><br><br><br>
+          <hr style="width: 10em;">
+        </td>
+      </tr>
+    </table>
 
     <p style="text-align: center; margin-top: 40px; font-style: italic;">Ďakujeme za vašu spoluprácu.</p>
 

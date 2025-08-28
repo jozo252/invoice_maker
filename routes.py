@@ -18,6 +18,7 @@ from sqlalchemy import func
 from decimal import Decimal, ROUND_HALF_UP
 import io
 from segno import helpers as segno_helpers
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 
 
@@ -32,11 +33,28 @@ main = Blueprint('main', __name__)
 
 
 
-
+def _D(x, default="0"):
+    if x in (None, ""):
+        return Decimal(default)
+    try:
+        return Decimal(str(x))
+    except (InvalidOperation, ValueError, TypeError):
+        return Decimal(default)
 
 # Initialize Stripe with your secret key
 
 
+def _parse_date(s, default_val):
+    if not s:
+        return default_val
+    s = s.strip()
+    # 1) HTML input type="date" posílá YYYY-MM-DD
+    for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    return default_val
 
 
 
@@ -55,6 +73,7 @@ def pricing():
 @main.route('/webhook', methods=['POST'])
 def stripe_webhook():
     stripe.api_key = current_app.config["STRIPE_API_KEY"]
+    print(stripe.api_key)
     payload = request.data
     sig_header = request.headers.get("Stripe-Signature", "")
     endpoint_secret = current_app.config["STRIPE_WEBHOOK_SECRET"]
@@ -103,7 +122,7 @@ def stripe_webhook():
 @main.route('/create-checkout-session')
 @login_required
 def create_checkout_session():
-    stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
+    stripe.api_key = current_app.config['STRIPE_API_KEY']
     session = stripe.checkout.Session.create(
         payment_method_types=['card'],
         mode='subscription',
@@ -296,15 +315,35 @@ def index():
 @main.route('/invoice/<int:invoice_id>/download')
 @login_required
 def download_invoice(invoice_id):
-    invoice = Invoice.query.filter_by(id=invoice_id,user_id=current_user.id).first_or_404()
+    invoice = Invoice.query.filter_by(id=invoice_id, user_id=current_user.id).first_or_404()
+
+    # compute amount (same as view_invoice)
+    base = Decimal(str(invoice.total_cost or 0))
+    if getattr(invoice.company, "is_vat_payer", False):
+        vat_rate = Decimal(str(invoice.vat_rate or 0)) / Decimal("100")
+        amount_due = (base * (Decimal("1") + vat_rate)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    else:
+        amount_due = base.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    qr_svg = None
+    if invoice.company and invoice.company.iban:
+        amount_for_qr = amount_due if amount_due >= Decimal("0.01") else None
+        qr_svg = epc_qr_svg(
+            recipient_name=invoice.company.name,
+            iban=invoice.company.iban,
+            bic=invoice.company.bic,
+            amount_eur=amount_for_qr,
+            text=f"Invoice {invoice.invoice_number}"
+        )
+
     context = {
-        "invoice_data": invoice,
-        "client_data": invoice.client,
-        "company_data": invoice.company,
+        "invoice": invoice,
+        "qr_svg": qr_svg,   # 👈 add QR to context
     }
 
-    pdf_path = render_invoice_to_pdf("invoice.html", context)
+    pdf_path = render_invoice_to_pdf("invoice_pdf.html", context)
     return send_file(pdf_path, as_attachment=True)
+
 
 
 
@@ -688,27 +727,128 @@ def view_ai_invoice(invoice_id):
         items=invoice.items
     )
 
-def epc_qr_svg(*, recipient_name: str, iban: str, amount_eur: Decimal,
-               text: str, bic: str | None = None, scale: int = 4) -> str:
+def _epc_amount(value):
+    """Vrátí částku pro EPC (float) nebo None, když je nevalidní."""
+    if value is None:
+        return None
+    try:
+        amt = Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    except (InvalidOperation, ValueError, TypeError):
+        return None
+    # EPC min je 0.01; horní limit nech konzervativní
+    if amt < Decimal("0.01") or amt > Decimal("999999999.99"):
+        return None
+    return float(amt)
+
+def epc_qr_svg(*, recipient_name: str, iban: str,
+               amount_eur: Decimal | None, text: str,
+               bic: str | None = None, scale: int = 4) -> str | None:
     name = (recipient_name or "")[:70]
     rem_text = (text or "")[:140]
     iban_clean = (iban or "").replace(" ", "")
-    amt = amount_eur.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    if not iban_clean:
+        return None  # bez IBAN QR nemá smysl
+
+    # amount musí být vždy – pokud None nebo <0.01 → 0.00
+    if amount_eur is None or amount_eur < Decimal("0.01"):
+        amt = Decimal("0.00")
+    else:
+        amt = amount_eur.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     qr = segno_helpers.make_epc_qr(
         name=name,
         iban=iban_clean,
-        encoding='UTF-8',
-        amount=amt,
+        bic=bic or None,
+        amount=amt,          # 👈 vždy předáme
         text=rem_text,
-        bic=bic or None
+        encoding='UTF-8',
     )
 
-    # 🔧 segno sometimes writes bytes → capture as bytes, then decode
     buf = io.BytesIO()
     qr.save(buf, kind="svg", scale=scale, xmldecl=False)
-    svg_str = buf.getvalue().decode("utf-8")
-    return svg_str
+    return buf.getvalue().decode("utf-8")
+
+
+
+@main.route("/inoices/<int:invoice_id>/edit", methods=["GET","POST"])
+@login_required
+def edit_invoice(invoice_id):
+    inv = Invoice.query.get_or_404(invoice_id)
+    # ownership/permissions
+    if inv.user_id != current_user.id:
+        abort(403)
+    if inv.status != InvoiceStatus.unpaid:
+        flash("Faktúru možno upravovať len v stave 'draft'.", "warning")
+        return redirect(url_for('main.view_invoice', invoice_id=invoice_id))
+
+    if request.method == "POST":
+        # Basic fields
+        inv.invoice_number = request.form.get("invoice_number", inv.invoice_number)
+        inv.date = _parse_date(request.form.get("date"), inv.date)
+        inv.due_date = _parse_date(request.form.get("due_date"), inv.due_date)
+        inv.payment_method = request.form.get("payment_method") or inv.payment_method
+        inv.vat_rate = float(request.form.get("vat_rate") or inv.vat_rate or 0)
+        inv.currency = request.form.get("currency") or inv.currency
+
+        # Company / Client (optional: lock company, only allow client changes)
+        inv.client.name   = request.form.get("client_name")   or inv.client.name
+        inv.client.street = request.form.get("client_street") or inv.client.street
+        inv.client.city   = request.form.get("client_city")   or inv.client.city
+        inv.client.zip_code = request.form.get("client_zip")  or inv.client.zip_code
+        inv.client.country  = request.form.get("client_country") or inv.client.country
+        inv.client.ico    = request.form.get("client_ico")    or inv.client.ico
+        inv.client.dic    = request.form.get("client_dic")    or inv.client.dic
+        inv.client.ic_dph = request.form.get("client_ic_dph") or inv.client.ic_dph
+
+        # Replace items safely
+        # 1) delete existing items (draft only)
+        InvoiceItem.query.filter_by(invoice_id=inv.id).delete()
+
+        # 2) rebuild from posted rows (items[0][...], items[1][...], …)
+        rows = []
+        i = 0
+        while True:
+            prefix = f"items[{i}]"
+            desc = request.form.get(f"{prefix}[description]")
+            if desc is None:
+                break
+            qty  = request.form.get(f"{prefix}[quantity]")
+            unit = request.form.get(f"{prefix}[unit]")
+            ppi  = request.form.get(f"{prefix}[price_per_item]")
+            if desc.strip():
+                try:
+                    qty_f = float(qty or 0)
+                    ppi_f = float(ppi or 0)
+                    rows.append(InvoiceItem(
+                        invoice_id=inv.id,
+                        description=desc.strip(),
+                        quantity=qty_f,
+                        unit=(unit or "").strip(),
+                        price_per_item=ppi_f,
+                        total_cost=round(qty_f * ppi_f, 2),
+                    ))
+                except ValueError:
+                    flash("Neplatné číslo v položkách.", "danger")
+                    return redirect(request.url)
+            i += 1
+
+        db.session.add_all(rows)
+
+        # Recompute totals server-side (don’t trust the browser)
+        inv.total_cost = sum(it.total_cost for it in rows)
+
+        try:
+            db.session.commit()
+            flash("Faktúra bola upravená.", "success")
+            return redirect(url_for('main.view_invoice', invoice_id=inv.id))
+        except IntegrityError:
+            db.session.rollback()
+            flash("Chyba pri ukladaní. Skontroluj duplicitu čísla faktúry a formát dát.", "danger")
+
+    # GET: render edit form prefilled
+    return render_template("edit_invoice.html", invoice=inv)
+
+
 
 
 
@@ -720,22 +860,28 @@ def view_invoice(invoice_id):
         .filter(Invoice.id==invoice_id, Invoice.user_id==current_user.id)
         .first_or_404())
 
-    # brutto suma do QR
-    base = Decimal(str(invoice.total_cost))
-    vat  = Decimal(str(invoice.vat_rate or 0)) / Decimal(100)
-    amount_due = (base * (Decimal(1)+vat)).quantize(Decimal("0.01"))
+    # základ a DPH bezpečně
+    base = _D(invoice.total_cost)  # když None → 0
+    if getattr(invoice.company, "is_vat_payer", False):
+        vat_rate = _D(invoice.vat_rate) / Decimal("100")
+        amount_due = (base * (Decimal("1") + vat_rate)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    else:
+        amount_due = base.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     qr_svg = None
     if invoice.company and invoice.company.iban:
+        # pokud je částka < 0.01, QR bude bez částky (validní EPC)
+        amount_for_qr = amount_due if amount_due >= Decimal("0.01") else '0.00'
         qr_svg = epc_qr_svg(
             recipient_name=invoice.company.name,
             iban=invoice.company.iban,
             bic=invoice.company.bic,
-            amount_eur=amount_due,
+            amount_eur=amount_for_qr,  # může být None
             text=f"Invoice {invoice.invoice_number}"
         )
 
     return render_template("invoice.html", invoice=invoice, qr_svg=qr_svg)
+
 
 @main.route('/invoices')
 @login_required
@@ -769,6 +915,5 @@ def delete_invoice(invoice_id):
     db.session.delete(invoice)
     db.session.commit()
     return redirect(url_for('main.list_invoices'))
-
 
 
