@@ -7,9 +7,8 @@ from difflib import get_close_matches
 import json
 import re
 import ast
-load_dotenv()  
-openai_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=openai_key)
+from flask import current_app
+
 
 
 
@@ -27,6 +26,9 @@ def with_app_context(func):
 
 def invoice_maker(data):
     try:
+        openai_key = current_app.config("OPENAI_API_KEY")
+        client = OpenAI(api_key=openai_key)
+
         response = client.chat.completions.create(
             model="gpt-4.1",
             messages=[

@@ -43,6 +43,7 @@ def create_app():
     app.config["STRIPE_PUBLIC_KEY"] = os.getenv("STRIPE_PUBLIC_KEY")
     app.config["STRIPE_PRICE_ID"] = os.getenv("STRIPE_PRICE_ID")
     app.config["SUCCESS_URL"] = os.getenv("SUCCESS_URL")    
+    app.config["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
     
 
     
