@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Pricing – InvoiceMakaraí{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col">
+      <h2 class="h1 mb-1">Cenové plány</h2>
+      <div class="text-secondary">Spusť to hneď. Keď začneš šetriť čas, prejdeš na Pro.</div>
+    </div>
+  </div>
+
+  <!-- Cards -->
+  <div class="row g-3 g-md-4">
+    <!-- Free -->
+    <div class="col-12 col-md-6">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="d-inline-flex align-items-center gap-2 badge bg-azure-lt text-azure mb-3">
+            Free
+          </div>
+          <h3 class="card-title mb-1">Starter</h3>
+          <div class="text-secondary mb-3">Pre solo testovanie a malý objem.</div>
+
+          <div class="d-flex align-items-end gap-1 mb-4">
+            <div class="h1 mb-0">0€</div>
+            <div class="text-secondary mb-2">/ mesiac</div>
+          </div>
+
+          <ul class="list-unstyled text-secondary mb-4">
+            <li class="mb-2"><i class="ti ti-circle-filled text-secondary me-2" style="font-size:.6rem"></i>5 faktúr mesačne</li>
+            <li class="mb-2"><i class="ti ti-circle-filled text-secondary me-2" style="font-size:.6rem"></i>PDF export</li>
+            <li class="mb-2"><i class="ti ti-circle-filled text-secondary me-2" style="font-size:.6rem"></i>Základné položky a klienti</li>
+            <li class="mb-2"><i class="ti ti-circle-filled text-secondary me-2" style="font-size:.6rem"></i>Emailové overenie</li>
+          </ul>
+
+          <a href="{{ url_for('main.login') }}" class="btn btn-white w-100">
+            Začať zdarma
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pro -->
+    <div class="col-12 col-md-6">
+      <div class="card h-100 border-indigo">
+        <div class="card-body position-relative">
+          <div class="position-absolute top-0 end-0 me-3 mt-3 badge bg-yellow text-dark">Najlepšia voľba</div>
+
+          <div class="d-inline-flex align-items-center gap-2 badge bg-indigo-lt text-indigo mb-3">
+            Pro
+          </div>
+          <h3 class="card-title mb-1">Pro</h3>
+          <div class="text-secondary mb-3">Pre freelancerov a malé firmy – bez limitov.</div>
+
+          <div class="d-flex align-items-baseline gap-2 mb-3">
+            <div class="h1 mb-0">7,99€</div>
+            <div class="text-secondary">/ mesiac</div>
+            <span class="badge bg-azure-lt text-azure ms-2">14 dní trial</span>
+          </div>
+
+          <ul class="list-unstyled text-secondary mb-4">
+            <li class="mb-2"><i class="ti ti-circle-filled text-indigo me-2" style="font-size:.6rem"></i>Neobmedzené faktúry</li>
+            <li class="mb-2"><i class="ti ti-circle-filled text-indigo me-2" style="font-size:.6rem"></i>AI vypĺňanie položiek z textu/emailu</li>
+            <li class="mb-2"><i class="ti ti-circle-filled text-indigo me-2" style="font-size:.6rem"></i>Viac klientov & produkty</li>
+            <li class="mb-2"><i class="ti ti-circle-filled text-indigo me-2" style="font-size:.6rem"></i>Variabilný symbol, VS/SS/KS, DPH polia</li>
+            <li class="mb-2"><i class="ti ti-circle-filled text-indigo me-2" style="font-size:.6rem"></i>Exporty (PDF/CSV) a logo na faktúre</li>
+            <li class="mb-2"><i class="ti ti-circle-filled text-indigo me-2" style="font-size:.6rem"></i>Prioritná podpora e-mailom</li>
+          </ul>
+
+          <!-- Upraviť href na tvoj server endpoint, ktorý vytvorí Stripe Checkout Session -->
+          <a href="{{ url_for('main.create_checkout_session') }}"
+             class="btn btn-indigo w-100">
+            Vyskúšať Pro
+          </a>
+          <div class="text-secondary small text-center mt-2">Zrušíš kedykoľvek. Žiadne skryté poplatky.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mini FAQ -->
+  <div class="row g-3 g-md-4 mt-1">
+    <div class="col-12 col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="card-title">Je trial skutočne bez karty?</div>
+          <div class="text-secondary">Môžeš začať bez karty a pridať ju až pri prechode na Pro.</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="card-title">Môžem exportovať svoje dáta?</div>
+          <div class="text-secondary">Áno, CSV a PDF export je dostupný priamo v aplikácii.</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="card-title">Funguje to s DPH?</div>
+          <div class="text-secondary">Áno, polia pre DPH sú súčasťou Pro plánu.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>AI faktúra</h2>
+
+<form method="post" action="{{ url_for('aibot.ai_preview') }}" class="mt-3">
+  <div class="mb-3">
+    <label for="client_id" class="form-label">Klient</label>
+    <select name="client_id" id="client_id" class="form-select" required>
+      <option value="">-- vyber --</option>
+      {% for c in clients %}
+        <option value="{{ c.id }}">{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label for="company_id" class="form-label">Moja firma</label>
+    <select name="company_id" id="company_id" class="form-select" required>
+      <option value="">-- vyber --</option>
+      {% for c in companies %}
+        <option value="{{ c.id }}">{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label for="invoice_number" class="form-label">Číslo faktúry (nepovinné)</label>
+    <input type="text" name="invoice_number" id="invoice_number" class="form-control" placeholder="napr. INV-2025-001">
+    <div class="form-text">Ak necháš prázdne, vygeneruje sa v náhľade.</div>
+  </div>
+
+  <div class="mb-3">
+    <label for="user_input" class="form-label">Text pre AI</label>
+    <textarea name="user_input" id="user_input" rows="10" class="form-control" placeholder="Sem vlož text (klient, položky, ceny, dátumy, DPH, spôsob úhrady)..."></textarea>
+  </div>
+
+  <button type="submit" class="btn btn-primary">AI → Náhľad</button>
+</form>
+
+{% if ai_errors %}
+  <div class="alert alert-warning mt-4">
+    <strong>AI návrh mal chyby:</strong>
+    <pre class="mb-0">{{ ai_errors|tojson(indent=2) }}</pre>
+  </div>
+{% endif %}
+
+{% endblock %}

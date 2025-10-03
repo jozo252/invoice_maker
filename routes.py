@@ -56,6 +56,11 @@ def _parse_date(s, default_val):
             continue
     return default_val
 
+@main.route('/')
+def home():
+    return render_template('home.html')
+
+
 
 
 @main.route('/account')
@@ -68,6 +73,11 @@ def account():
 @login_required
 def pricing():
     return render_template('pricing.html')
+
+@main.route('/priceing')
+@login_required
+def priceing():
+    return render_template('priceing.html')
 
 @csrf.exempt
 @main.route('/webhook', methods=['POST'])
@@ -628,7 +638,7 @@ def add_invoice():
                 continue
             try:
                 # quantity máš v modeli Integer → drž sa int
-                q = int(Decimal(str(qty)))
+                q = Decimal(str(qty))
                 p = Decimal(str(price))
             except Exception:
                 continue
@@ -638,7 +648,7 @@ def add_invoice():
             item_total = (p * q).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
             items.append(InvoiceItem(
                 description=desc,
-                quantity=q,
+                quantity=float(q),
                 unit=unit,
                 price_per_item=float(p),
                 total_cost=float(item_total)

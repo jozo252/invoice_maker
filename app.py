@@ -6,11 +6,13 @@ from dotenv import load_dotenv
 from flask_migrate import Migrate
 from flask_wtf import CSRFProtect
 from flask_login import LoginManager
-from models import User
 from flask_wtf import CSRFProtect
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 import sqlite3
+from models import User  # <--- import User model here to avoid circular imports
+import models
+
 csrf = CSRFProtect()
 
 
@@ -60,6 +62,8 @@ def create_app():
             return User.query.get(int(user_id))
 
     from routes import main as main_blueprint
+    from aibot_routes import aibot as aibot_bp
     app.register_blueprint(main_blueprint)
+    app.register_blueprint(aibot_bp)
 
     return app

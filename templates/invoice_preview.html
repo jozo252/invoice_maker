@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Náhľad faktúry (AI)</h2>
+
+<form method="post" action="{{ url_for('aibot.ai_confirm') }}">
+  <input type="hidden" name="db_json" value='{{ db_json|tojson }}'>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  
+
+  <div class="mb-2"><strong>Číslo:</strong> {{ db_json.invoice_number }}</div>
+  <div class="mb-2"><strong>Dátum:</strong> {{ db_json.inv_date }}</div>
+  <div class="mb-2"><strong>Splatnosť:</strong> {{ db_json.due_date }}</div>
+  <div class="mb-2"><strong>Mena:</strong> {{ db_json.currency }}</div>
+  <div class="mb-2"><strong>DPH:</strong> {{ db_json.vat_rate }} %</div>
+  <div class="mb-2"><strong>Platba:</strong> {{ db_json.payment_method }}</div>
+
+  <hr>
+  <table class="table table-sm align-middle">
+    <thead>
+      <tr><th>Položka</th><th>Mj</th><th>Množ.</th><th>Cena/ks</th><th>Spolu</th></tr>
+    </thead>
+    <tbody>
+      {% for it in db_json.items %}
+      <tr>
+        <td>{{ it.description }}</td>
+        <td>{{ it.unit }}</td>
+        <td>{{ it.quantity }}</td>
+        <td>{{ "%.2f"|format(it.price_per_item) }}</td>
+        <td>{{ "%.2f"|format(it.total_cost) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="mt-3 d-flex gap-2">
+    <button type="submit" class="btn btn-primary">Potvrdiť a uložiť</button>
+    <a href="{{ url_for('aibot.ai_bot') }}" class="btn btn-secondary">Späť</a>
+  </div>
+</form>
+{% endblock %}
