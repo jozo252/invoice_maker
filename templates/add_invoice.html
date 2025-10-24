@@ -13,19 +13,24 @@
   <form method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-    <div class="row mb-3">
-      <div class="col-md-4">
+    <div class="row mb-5">
+      <div class="col-md-3">
         <label>Číslo faktúry</label>
         <input type="text" name="invoice_number" class="form-control" required>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label>Dátum</label>
         <input type="date" name="date" class="form-control" required>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label>Splatnosť</label>
         <input type="date" name="due_date" class="form-control" required>
       </div>
+      <div class="col-md-3">
+        <label>Variabilný symbol</label>
+        <input type="text" name="variable_symbol" class="form-control">
+      </div>
+
     </div>
 
     <div class="row mb-3">

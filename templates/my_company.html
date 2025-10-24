@@ -3,73 +3,201 @@
 {% block title %}Moja firma{% endblock %}
 
 {% block content %}
-        <h1>Moja firma</h1>
-        <p>Tu môžete spravovať údaje o vašej firme, ktoré sa použijú na faktúrach.</p>
-        
-        {% if message %}
-            <div class="alert alert-success">{{ message }}</div>
-        {% endif %}
-        <form method="POST">
+<div class="container-xl py-4 py-md-5">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-3 mb-md-4">
+    <div>
+      <h1 class="h2 mb-1">Moja firma</h1>
+      <p class="text-secondary mb-0">Spravuj údaje, ktoré sa automaticky použijú na faktúrach.</p>
+    </div>
+    <a href="{{ url_for('main.dashboard') if url_for else '#' }}" class="btn btn-link d-none d-md-inline">← Späť na prehľad</a>
+  </div>
+
+  <!-- Feedback -->
+  {% if message %}
+  <div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="ti ti-check me-1"></i> {{ message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+  {% endif %}
+
+  <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-    <div>
-        <label for="name">Názov firmy / Meno</label>
-        <input type="text" name="name" value="{{ company.name if company else '' }}" required>
-    </div>
-    <div>
-        <label for="street">Ulica</label>
-        <input type="text" name="street" value="{{ company.street if company else '' }}" required>
-    </div>
-    <div>
-        <label for="city">Mesto</label>
-        <input type="text" name="city" value="{{ company.city if company else '' }}" required>
-    </div>
-    <div>
-        <label for="zip_code">PSČ</label>
-        <input type="text" name="zip_code" value="{{ company.zip_code if company else '' }}" required>
-    </div>
-    <div>
-        <label for="country">Krajina</label>
-        <input type="text" name="country" value="{{ company.country if company else '' }}" required>
-    </div>
-    <div>
-        <label for="ico">IČO</label>
-        <input type="text" name="ico" value="{{ company.ico if company else '' }}">
-    </div>
-    <div>
-        <label for="dic">DIČ</label>
-        <input type="text" name="dic" value="{{ company.dic if company else '' }}">
-    </div>
-    <div>
-        <label for="email">Email</label>
-        <input type="email" name="email" value="{{ company.email if company else '' }}">
-    </div>
-    <div>
-        <label for="phone">Telefón</label>
-        <input type="text" name="phone" value="{{ company.phone if company else '' }}">
-    </div>
-    <div>
-        <label for="is_vat_payer">Platiteľ DPH</label>
-        <select name="is_vat_payer">
-            <option value="True" {% if company and company.is_vat_payer %}selected{% endif %}>Áno</option>
-            <option value="False" {% if company and not company.is_vat_payer %}selected{% endif %}>Nie</option>
-        </select>
-    </div>
-    <div>
-        <label for="ic_dph">IČ DPH</label>
-        <input type="text" name="ic_dph" value="{{ company.ic_dph if company else '' }}">
-    </div>
-    
-    <div>
-        <label for="iban">IBAN</label>
-        <input type="text" name="iban" value="{{ company.iban if company else '' }}">
-    </div>
-    <div>
-        <label for="bic">BIC/SWIFT</label>
-        <input type="text" name="bic" value="{{ company.bic if company else '' }}">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-body">
+        <div class="d-flex align-items-center gap-2">
+          <i class="ti ti-building text-primary"></i>
+          <span class="fw-semibold">Identifikácia firmy</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label" for="name">Názov firmy / Meno <span class="text-danger">*</span></label>
+            <input class="form-control" id="name" name="name" type="text" value="{{ company.name if company else '' }}" required>
+            <div class="invalid-feedback">Zadaj názov firmy alebo meno.</div>
+          </div>
+          <div class="col-sm-8">
+            <label class="form-label" for="street">Ulica <span class="text-danger">*</span></label>
+            <input class="form-control" id="street" name="street" type="text" value="{{ company.street if company else '' }}" required>
+            <div class="invalid-feedback">Zadaj ulicu.</div>
+          </div>
+          <div class="col-sm-4">
+            <label class="form-label" for="zip_code">PSČ <span class="text-danger">*</span></label>
+            <input class="form-control" id="zip_code" name="zip_code" type="text" inputmode="numeric" pattern="\d{3}\s?\d{2}" placeholder="010 01" value="{{ company.zip_code if company else '' }}" required>
+            <div class="form-text">Formát: 000 00</div>
+            <div class="invalid-feedback">Zadaj PSČ v tvare 000 00.</div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label" for="city">Mesto <span class="text-danger">*</span></label>
+            <input class="form-control" id="city" name="city" type="text" value="{{ company.city if company else '' }}" required>
+            <div class="invalid-feedback">Zadaj mesto.</div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label" for="country">Krajina <span class="text-danger">*</span></label>
+            <input class="form-control" id="country" name="country" type="text" value="{{ company.country if company else '' or 'Slovensko' }}" required>
+            <div class="invalid-feedback">Zadaj krajinu.</div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <button type="submit">Uložiť</button>
-</form>
+    <div class="card border-0 shadow-sm mt-4">
+      <div class="card-header bg-body">
+        <div class="d-flex align-items-center gap-2">
+          <i class="ti ti-id-badge text-primary"></i>
+          <span class="fw-semibold">IČO / DIČ / IČ DPH</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label" for="ico">IČO</label>
+            <input class="form-control" id="ico" name="ico" type="text" inputmode="numeric" pattern="\d{8}" placeholder="12345678" value="{{ company.ico if company else '' }}">
+            <div class="form-text">8 číslic bez medzier.</div>
+            <div class="invalid-feedback">IČO má mať 8 číslic.</div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="dic">DIČ</label>
+            <input class="form-control" id="dic" name="dic" type="text" inputmode="numeric" pattern="\d{10}" placeholder="1234567890" value="{{ company.dic if company else '' }}">
+            <div class="form-text">Zvyčajne 10 číslic.</div>
+            <div class="invalid-feedback">DIČ má mať 10 číslic.</div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="is_vat_payer">Platiteľ DPH</label>
+            <select class="form-select" id="is_vat_payer" name="is_vat_payer">
+              <option value="True" {% if company and company.is_vat_payer %}selected{% endif %}>Áno</option>
+              <option value="False" {% if company and not company.is_vat_payer %}selected{% endif %}>Nie</option>
+            </select>
+          </div>
+          <div class="col-md-6" id="ic-dph-wrap">
+            <label class="form-label" for="ic_dph">IČ DPH</label>
+            <input class="form-control" id="ic_dph" name="ic_dph" type="text" placeholder="SK1234567890" pattern="[A-Z]{2}[0-9A-Za-z]{8,12}" value="{{ company.ic_dph if company else '' }}">
+            <div class="form-text">Formát napr. SK1234567890 (alebo CZ...).</div>
+            <div class="invalid-feedback">Zadaj správny formát IČ DPH (kód krajiny + čísla).</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
+    <div class="card border-0 shadow-sm mt-4">
+      <div class="card-header bg-body">
+        <div class="d-flex align-items-center gap-2">
+          <i class="ti ti-mail text-primary"></i>
+          <span class="fw-semibold">Kontakt</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label" for="email">Email</label>
+            <input class="form-control" id="email" name="email" type="email" placeholder="firma@example.com" value="{{ company.email if company else '' }}">
+            <div class="invalid-feedback">Zadaj platný email.</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="phone">Telefón</label>
+            <input class="form-control" id="phone" name="phone" type="tel" inputmode="tel" placeholder="+421 900 000 000" value="{{ company.phone if company else '' }}">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mt-4">
+      <div class="card-header bg-body">
+        <div class="d-flex align-items-center gap-2">
+          <i class="ti ti-credit-card text-primary"></i>
+          <span class="fw-semibold">Bankové údaje</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-8">
+            <label class="form-label" for="iban">IBAN</label>
+            <input class="form-control" id="iban" name="iban" type="text" inputmode="text" placeholder="SK00 0000 0000 0000 0000 0000" value="{{ company.iban if company else '' }}" pattern="[A-Z]{2}\d{2}[A-Z0-9]{11,30}">
+            <div class="form-text">Medzery sú povolené, použijeme normalizovaný tvar na faktúre.</div>
+            <div class="invalid-feedback">Skontroluj formát IBAN.</div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="bic">BIC/SWIFT</label>
+            <input class="form-control" id="bic" name="bic" type="text" placeholder="FIOZSKBAXXX" value="{{ company.bic if company else '' }}" pattern="[A-Za-z0-9]{8,11}">
+            <div class="invalid-feedback">BIC má 8 až 11 znakov.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mb-3">
+    <label for="stamp">Pečiatka (obrázok)</label>
+    <input type="file" name="stamp" class="form-control" accept=".png,.jpg,.jpeg,.webp">
+    {% if company and company.stamp_url %}
+      <div class="mt-2">
+        <img src="{{ company.stamp_url }}" alt="Pečiatka" style="max-height: 80px;">
+      </div>
+    {% endif %}
+  </div>
+
+    <div class="d-flex justify-content-end gap-2 mt-4">
+      <a href="{{ url_for('main.dashboard') if url_for else '#' }}" class="btn btn-outline-secondary">Zrušiť</a>
+      <button type="submit" class="btn btn-primary">
+        <i class="ti ti-device-floppy me-1"></i> Uložiť
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Client-side helpers: Bootstrap validation + IČ DPH toggle -->
+<script>
+(function () {
+  'use strict'
+  // Bootstrap validation
+  const forms = document.querySelectorAll('.needs-validation')
+  Array.prototype.slice.call(forms).forEach(function (form) {
+    form.addEventListener('submit', function (event) {
+      if (!form.checkValidity()) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      form.classList.add('was-validated');
+    }, false);
+  });
+
+  // Toggle IČ DPH by VAT payer
+  const selectVat = document.getElementById('is_vat_payer');
+  const icDph = document.getElementById('ic_dph');
+  const wrap = document.getElementById('ic-dph-wrap');
+  function refreshVat() {
+    const isVat = selectVat && selectVat.value === 'True';
+    if (icDph) {
+      icDph.toggleAttribute('required', isVat);
+    }
+    if (wrap) {
+      wrap.style.display = isVat ? '' : '';
+    }
+  }
+  if (selectVat) {
+    selectVat.addEventListener('change', refreshVat);
+    refreshVat();
+  }
+})();
+</script>
 {% endblock %}

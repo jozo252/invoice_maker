@@ -46,6 +46,12 @@ def create_app():
     app.config["STRIPE_PRICE_ID"] = os.getenv("STRIPE_PRICE_ID")
     app.config["SUCCESS_URL"] = os.getenv("SUCCESS_URL")    
     app.config["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+
+    #-------------------------------------------------------------------stamp
+
+    app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
+    app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 
+    app.config['ALLOWED_STAMP_EXT'] = {'png', 'jpg', 'jpeg', 'webp'}
     
 
     

@@ -6,6 +6,7 @@ from flask_login import UserMixin
 import enum
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import validates
+from sqlalchemy import Numeric
 
 
 
@@ -34,7 +35,7 @@ class InvoiceItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'), nullable=False)
     description = db.Column(db.String(200), nullable=False)
-    quantity = db.Column(db.Integer, nullable=False)
+    quantity = db.Column(Numeric(10, 3, asdecimal=True), nullable=False)    
     unit=db.Column(db.String(50), nullable=False)  # e.g., "pcs", "kg", etc.
     price_per_item = db.Column(db.Float, nullable=False)
     total_cost = db.Column(db.Float, nullable=False)
@@ -84,6 +85,7 @@ class Invoice(db.Model):
         )
         id = db.Column(db.Integer, primary_key=True)
         invoice_number = db.Column(db.String(50), nullable=False)
+        variable_symbol = db.Column(db.String(20), nullable=True)
         date = db.Column(db.Date, nullable=False)
         due_date = db.Column(db.Date, nullable=False)
         user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -150,4 +152,5 @@ class Company(db.Model):
         bic = db.Column(db.String(11), nullable=False)
         is_vat_payer = db.Column(db.Boolean, default=False)
         ic_dph = db.Column(db.String(20), nullable=True)  # Optional field for VAT ID if the 
+        stamp_url=db.Column(db.String(256),nullable=True)
        

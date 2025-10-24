@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for,session, flash, send_file, abort, jsonify, current_app
+from flask import Blueprint, render_template, request, redirect, url_for,session, flash, send_file, abort, jsonify, current_app,send_from_directory
 from models import Client, Invoice, Company, InvoiceItem, User, InvoiceStatus, PaymentMethod, InvoiceCounter
 from datetime import datetime, timezone
 from difflib import get_close_matches
@@ -15,10 +15,15 @@ from datetime import timedelta, date
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 import io
 from segno import helpers as segno_helpers
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from PIL import Image
+import base64
+import mimetypes
+
+
 
 
 
@@ -346,13 +351,26 @@ def download_invoice(invoice_id):
             text=f"Invoice {invoice.invoice_number}"
         )
 
+    if invoice.company:
+        stamp_abs = os.path.join(
+            current_app.static_folder, 'uploads', f'stamp_{invoice.company.user_id}.png'
+        )
+        if os.path.exists(stamp_abs):
+            mime, _ = mimetypes.guess_type(stamp_abs)
+            mime = mime or "image/png"
+            with open(stamp_abs, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("ascii")
+            stamp_data_uri = f"data:{mime};base64,{b64}"
     context = {
         "invoice": invoice,
-        "qr_svg": qr_svg,   # 👈 add QR to context
+        "qr_svg": qr_svg,   
+        "stamp_data_uri": stamp_data_uri
+
     }
 
     pdf_path = render_invoice_to_pdf("invoice_pdf.html", context)
-    return send_file(pdf_path, as_attachment=True)
+    return send_file(pdf_path, as_attachment=True, download_name=f"{invoice.invoice_number}.pdf")
+
 
 
 
@@ -539,12 +557,48 @@ def my_company():
         company.bic = request.form['bic']
         company.is_vat_payer = request.form['is_vat_payer'] == 'True'
         company.ic_dph = request.form.get('ic_dph', '').strip() if company.is_vat_payer else None
+#-----------------------stamp
+        file=request.files.get('stamp')
+
+        if file and file.filename:
+            if '.' in file.filename:
+                ext = file.filename.rsplit('.', 1)[1].lower()
+            else:
+                ext = ''
+            ext=file.filename.rsplit('.',1)[1].lower()
+            if ext not in current_app.config['ALLOWED_STAMP_EXT']:
+                flash('Nepovolený formát obrázka (použi PNG/JPG/WEBP).')
+                return redirect(request.url)
+            
+            static_upload_dir = os.path.join(current_app.static_folder, 'uploads')
+            os.makedirs(static_upload_dir, exist_ok=True)
+
+            filename = f"stamp_{current_user.id}.png"
+            save_path = os.path.join(static_upload_dir, filename)
+
+            try:
+                # 3) Načítanie obrázka + normalizácia do PNG (transparentné pozadie, menší rozmer)
+                img = Image.open(file.stream).convert('RGBA')
+                img.thumbnail((800, 800))
+                img.save(save_path, format='PNG', optimize=True)
+
+            except Exception as e:
+                current_app.logger.exception("Stamp upload failed")
+                flash('Súbor neviem spracovať ako obrázok.', 'danger')
+                return redirect(request.url)
+            company.stamp_url = url_for('static', filename=f'uploads/{filename}', _external=False)
+
 
         db.session.commit()
         flash("Údaje o firme boli úspešne uložené.", "success")
         return redirect(url_for('main.my_company'))
 
     return render_template('my_company.html', company=company)
+
+@main.route('/uploads/<path:filename>')
+def uploaded_file(filename):
+    return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
+
 
 
 @main.route("/invoice/<int:id>/mark_paid", methods=["POST"])
@@ -673,7 +727,12 @@ def add_invoice():
         except Exception:
             vat_rate = 0.0
 
-
+        
+        set_variable_symbol= request.form.get('variable_symbol')
+        if set_variable_symbol:
+            variable_symbol=set_variable_symbol
+        else:
+            variable_symbol=invoice_number
 
         pm_raw = (request.form.get('payment_method') or 'bank_transfer').strip()
         allowed = {'bank_transfer','cash','card','other'}
@@ -682,6 +741,7 @@ def add_invoice():
 
         invoice = Invoice(
             invoice_number=invoice_number,
+            variable_symbol=variable_symbol,
             date=date_obj,
             due_date=due_obj,
             currency=request.form['currency'],
@@ -780,6 +840,28 @@ def epc_qr_svg(*, recipient_name: str, iban: str,
 
 
 
+
+
+def _to_decimal(val, default="0"):
+    if val is None:
+        val = default
+    if isinstance(val, (int, float, Decimal)):
+        # str() avoids binary float artifacts
+        val = str(val)
+    # normalize "12,34" -> "12.34"
+    val = val.strip().replace(",", ".")
+    try:
+        return Decimal(val)
+    except (InvalidOperation, ValueError, TypeError):
+        raise ValueError("Invalid numeric input")
+
+def _money(val):
+    return _to_decimal(val).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+def _qty(val):
+    # keep 3 decimals if you want, or 2
+    return _to_decimal(val).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
+
 @main.route("/inoices/<int:invoice_id>/edit", methods=["GET","POST"])
 @login_required
 def edit_invoice(invoice_id):
@@ -797,10 +879,19 @@ def edit_invoice(invoice_id):
         inv.date = _parse_date(request.form.get("date"), inv.date)
         inv.due_date = _parse_date(request.form.get("due_date"), inv.due_date)
         inv.payment_method = request.form.get("payment_method") or inv.payment_method
-        inv.vat_rate = float(request.form.get("vat_rate") or inv.vat_rate or 0)
+        # VAT as Decimal (percent)
+        try:
+            inv.vat_rate = _to_decimal(request.form.get("vat_rate", inv.vat_rate or "0"))
+        except ValueError:
+            flash("Neplatná DPH sadzba.", "danger")
+            return redirect(request.url)
         inv.currency = request.form.get("currency") or inv.currency
 
-        # Company / Client (optional: lock company, only allow client changes)
+        # Guard client exists
+        if not inv.client:
+            flash("Klient nie je priradený.", "danger")
+            return redirect(request.url)
+
         inv.client.name   = request.form.get("client_name")   or inv.client.name
         inv.client.street = request.form.get("client_street") or inv.client.street
         inv.client.city   = request.form.get("client_city")   or inv.client.city
@@ -810,43 +901,53 @@ def edit_invoice(invoice_id):
         inv.client.dic    = request.form.get("client_dic")    or inv.client.dic
         inv.client.ic_dph = request.form.get("client_ic_dph") or inv.client.ic_dph
 
-        # Replace items safely
-        # 1) delete existing items (draft only)
-        InvoiceItem.query.filter_by(invoice_id=inv.id).delete()
+        # Replace items
+        descriptions = request.form.getlist('description[]')
+        quantities   = request.form.getlist('quantity[]')
+        units        = request.form.getlist('unit[]')
+        prices       = request.form.getlist('price_per_item[]')
 
-        # 2) rebuild from posted rows (items[0][...], items[1][...], …)
         rows = []
-        i = 0
-        while True:
-            prefix = f"items[{i}]"
-            desc = request.form.get(f"{prefix}[description]")
-            if desc is None:
-                break
-            qty  = request.form.get(f"{prefix}[quantity]")
-            unit = request.form.get(f"{prefix}[unit]")
-            ppi  = request.form.get(f"{prefix}[price_per_item]")
-            if desc.strip():
-                try:
-                    qty_f = float(qty or 0)
-                    ppi_f = float(ppi or 0)
-                    rows.append(InvoiceItem(
-                        invoice_id=inv.id,
-                        description=desc.strip(),
-                        quantity=qty_f,
-                        unit=(unit or "").strip(),
-                        price_per_item=ppi_f,
-                        total_cost=round(qty_f * ppi_f, 2),
-                    ))
-                except ValueError:
-                    flash("Neplatné číslo v položkách.", "danger")
-                    return redirect(request.url)
-            i += 1
+        total_cost = Decimal("0.00")
 
+        
+
+        for i, (desc, qty, unit, price) in enumerate(zip(descriptions, quantities, units, prices), start=1):
+            desc = (desc or "").strip()
+            unit = (unit or "").strip()
+            if not desc:
+                continue
+
+            q = _to_decimal(qty)
+            p = _to_decimal(price)
+            if q is None or p is None or q <= 0 or p < 0:
+                flash(f"Neplatná položka {i}.", "danger")
+                return redirect(request.url)
+
+            # precision: quantity 3dp, price 2dp, total 2dp
+            q = q.quantize(Decimal("0.001"))
+            p = p.quantize(Decimal("0.01"))
+            line_total = (q * p).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+            rows.append(InvoiceItem(
+                invoice_id=inv.id,
+                description=desc,
+                quantity=q,           # keep Decimal if your model uses Numeric(asdecimal=True)
+                unit=unit,
+                price_per_item=p,
+                total_cost=line_total
+            ))
+            total_cost += line_total
+
+        if not rows:
+            flash("Žiadne platné položky neboli odoslané.", "danger")
+            return redirect(request.url)
+
+        # Only now replace existing items
+        InvoiceItem.query.filter_by(invoice_id=inv.id).delete()
         db.session.add_all(rows)
 
-        # Recompute totals server-side (don’t trust the browser)
-        inv.total_cost = sum(it.total_cost for it in rows)
-
+        inv.total_cost = total_cost.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         try:
             db.session.commit()
             flash("Faktúra bola upravená.", "success")

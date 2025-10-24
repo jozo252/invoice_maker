@@ -34,7 +34,7 @@ def ai_preview():
     user_text = (request.form.get("user_input") or "").strip()
     client_id = int(request.form.get("client_id") or 0)
     company_id = int(request.form.get("company_id") or 0)
-    invoice_number = (request.form.get("invoice_number") or f"INV-{date_cls.today():%Y%m%d}-{randint(100,999)}").upper()
+    invoice_number = (request.form.get("invoice_number") or f"INV-{date_cls.today():%Y}-{randint(1000,9999)}").upper()
 
     # základná kontrola klient/firmy
     client_ok = Client.query.filter_by(id=client_id, user_id=current_user.id).first()
@@ -106,7 +106,9 @@ def ai_confirm():
     # uloženie
     try:
         invoice_id = create_invoice_from_model(db_json)
+        print('ide ')
     except Exception as e:
+        print('nejde')
         flash(f"Chyba pri ukladaní: {e}", "danger")
         return redirect(url_for("aibot.ai_bot"))
 

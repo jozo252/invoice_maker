@@ -6,6 +6,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from extensions import db
 from models import Invoice, InvoiceItem, InvoiceStatus, PaymentMethod
 from pydantic_models import InvoiceModel
+from datetime import datetime
 load_dotenv()  # load .env file if present
 
 
@@ -44,6 +45,7 @@ def call_llm_extract(user_text: str) -> dict:
         temperature=0.2,
     )
     raw = resp.choices[0].message.content
+    print(raw)
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
@@ -77,6 +79,7 @@ def create_invoice_from_model(data: dict) -> int:
 
     vat_amount = _round2(subtotal * (inv.vat_rate / 100.0))
     grand_total = _round2(subtotal + vat_amount)
+    #grand_total = _round2(subtotal)
 
     status = InvoiceStatus[inv.status] if inv.status in InvoiceStatus.__members__ else InvoiceStatus.unpaid
     paym = PaymentMethod[inv.payment_method] if inv.payment_method in PaymentMethod.__members__ else PaymentMethod.bank_transfer

@@ -1,8 +1,10 @@
 # schemas.py (Pydantic v2)
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator,ConfigDict
 from typing import List, Optional, Literal
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 
 PaymentMethodLiteral = Literal["bank_transfer", "cash", "card"]
 InvoiceStatusLiteral = Literal["unpaid", "paid", "waiting"]  # "overdue" je u teba odvodené, netreba nastavovať
@@ -51,6 +53,7 @@ class InvoiceAI(BaseModel):
 
 
 class InvoiceModel(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     invoice_number: str
     inv_date: date
     due_date: date
@@ -80,3 +83,29 @@ class InvoiceModel(BaseModel):
     @classmethod
     def _v_vat(cls, v):
         return 0.0 if v is None else float(v)
+    
+    @field_validator('inv_date', 'due_date', mode='before')
+    def parse_dates(cls, v):
+        if isinstance(v, date): return v
+        if isinstance(v, datetime): return v.date()
+        if isinstance(v, str):
+            s = v.strip()
+            # try dd.mm.yyyy
+            try:
+                return date.fromisoformat(s.split('T')[0])
+            except Exception:
+                pass
+            # 2) EU: "21.09.2025"
+            try:
+                return datetime.strptime(s, "%d.%m.%Y").date()
+            except Exception:
+                pass
+            # 3) RFC-1123: "Sun, 21 Sep 2025 00:00:00 GMT"
+            try:
+                dt = parsedate_to_datetime(s)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                return dt.astimezone(timezone.utc).date()
+            except Exception:
+                pass
+        raise ValueError("Invalid date; expected ISO YYYY-MM-DD, or dd.mm.yyyy, or RFC-1123")

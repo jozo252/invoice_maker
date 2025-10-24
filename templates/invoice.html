@@ -1,153 +1,211 @@
 {% extends "base.html" %}
 
+{% block title %}Faktúra {{ invoice.invoice_number }}{% endblock %}
+
 {% block content %}
-<div class="container py-5">
+<div class="container-xl py-4 py-md-5">
 
-  <!-- Header -->
-  <div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="mb-0">Faktúra č.: {{ invoice.invoice_number }}</h1>
-<form action="" method="post">
-  <a href="{{ url_for('main.view_invoice',invoice_id=invoice.id)}}" class="btn btn-primary mt-3">Zobraziť</a>
-
-  <a href="{{ url_for('main.download_invoice', invoice_id=invoice.id) }}" 
-     class="btn btn-primary mt-3">Stiahnuť PDF</a>
-</form>
-  
-</div>
+  <!-- Header & actions -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+      <h1 class="h3 mb-1">Faktúra č. {{ invoice.invoice_number }}</h1>
+      <div class="text-secondary">Vystavená {{ invoice.date.strftime('%d.%m.%Y') }} • Splatnosť {{ invoice.due_date.strftime('%d.%m.%Y') }}</div>
+    </div>
+    <div class="d-print-none d-flex gap-2">
+      <a href="{{ url_for('main.view_invoice', invoice_id=invoice.id) }}" class="btn btn-outline-secondary">
+        <i class="ti ti-eye me-1"></i> Zobraziť
+      </a>
+      <a href="{{ url_for('main.download_invoice', invoice_id=invoice.id) }}" class="btn btn-primary">
+        <i class="ti ti-file-type-pdf me-1"></i> Stiahnuť PDF
+      </a>
+      <button onclick="window.print()" class="btn btn-white border">
+        <i class="ti ti-printer me-1"></i> Tlačiť
+      </button>
+    </div>
+  </div>
 
   <!-- Parties -->
-  <div class="row">
-    <div class="col-md-6">
-      <h4>Dodávateľ</h4>
-      <p><strong>{{ invoice.company.name }}</strong></p>
-      <p>{{ invoice.company.street }}</p>
-      <p>{{ invoice.company.zip_code }} {{ invoice.company.city }}</p>
-      <p>{{ invoice.company.country }}</p>
-      <p>IČO: {{ invoice.company.ico }}</p>
-      <p>DIČ: {{ invoice.company.dic }}</p>
-      {% if invoice.company.is_vat_payer and invoice.company.ic_dph %}
-        <p>IČ DPH: {{ invoice.company.ic_dph }}</p>
-      {% else %}
-        <p><em>Dodávateľ nie je platiteľom DPH</em></p>
-      {% endif %}
-      <p>Email: {{ invoice.company.email }}</p>
-      <p>Telefón: {{ invoice.company.phone }}</p>
-      <p>IBAN: {{ invoice.company.iban }}</p>
-      <p>BIC/SWIFT: {{ invoice.company.bic }}</p>
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-body"><span class="fw-semibold"><i class="ti ti-building me-2 text-primary"></i>Dodávateľ</span></div>
+        <div class="card-body">
+          <div class="fw-semibold">{{ invoice.company.name }}</div>
+          <div>{{ invoice.company.street }}</div>
+          <div>{{ invoice.company.zip_code }} {{ invoice.company.city }}</div>
+          <div>{{ invoice.company.country }}</div>
+          <div class="mt-2 small text-secondary">
+            <div>IČO: {{ invoice.company.ico }}</div>
+            <div>DIČ: {{ invoice.company.dic }}</div>
+            {% if invoice.company.is_vat_payer and invoice.company.ic_dph %}
+              <div>IČ DPH: {{ invoice.company.ic_dph }}</div>
+            {% else %}
+              <div><em>Dodávateľ nie je platiteľom DPH</em></div>
+            {% endif %}
+          </div>
+          <div class="mt-2 small text-secondary">
+            {% if invoice.company.email %}<div>Email: {{ invoice.company.email }}</div>{% endif %}
+            {% if invoice.company.phone %}<div>Telefón: {{ invoice.company.phone }}</div>{% endif %}
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="col-md-6">
-      <h4>Odberateľ</h4>
-      <p><strong>{{ invoice.client.name }}</strong></p>
-      <p>{{ invoice.client.street }}</p>
-      <p>{{ invoice.client.zip_code }} {{ invoice.client.city }}</p>
-      <p>{{ invoice.client.country }}</p>
-      <p>IČO: {{ invoice.client.ico }}</p>
-      <p>DIČ: {{ invoice.client.dic }}</p>
-      {% if invoice.client.ic_dph %}
-        <p>IČ DPH: {{ invoice.client.ic_dph }}</p>
-      {% else %}
-        <p><em>Odberateľ nie je platiteľom DPH</em></p>
-      {% endif %}
-      {% if invoice.client.email %}<p>Email: {{ invoice.client.email }}</p>{% endif %}
-      {% if invoice.client.phone %}<p>Telefón: {{ invoice.client.phone }}</p>{% endif %}
-      {% if invoice.client.iban %}<p>IBAN: {{ invoice.client.iban }}</p>{% endif %}
-      {% if invoice.client.bic %}<p>BIC/SWIFT: {{ invoice.client.bic }}</p>{% endif %}
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-body"><span class="fw-semibold"><i class="ti ti-user me-2 text-primary"></i>Odberateľ</span></div>
+        <div class="card-body">
+          <div class="fw-semibold">{{ invoice.client.name }}</div>
+          <div>{{ invoice.client.street }}</div>
+          <div>{{ invoice.client.zip_code }} {{ invoice.client.city }}</div>
+          <div>{{ invoice.client.country }}</div>
+          <div class="mt-2 small text-secondary">
+            <div>IČO: {{ invoice.client.ico }}</div>
+            <div>DIČ: {{ invoice.client.dic }}</div>
+            {% if invoice.client.ic_dph %}
+              <div>IČ DPH: {{ invoice.client.ic_dph }}</div>
+            {% else %}
+              <div><em>Odberateľ nie je platiteľom DPH</em></div>
+            {% endif %}
+          </div>
+          <div class="mt-2 small text-secondary">
+            {% if invoice.client.email %}<div>Email: {{ invoice.client.email }}</div>{% endif %}
+            {% if invoice.client.phone %}<div>Telefón: {{ invoice.client.phone }}</div>{% endif %}
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- Payment & dates -->
-  <div class="card my-4 p-3">
-
-    <p><strong>Spôsob úhrady:</strong>
-      {% if invoice.payment_method.value == 'bank_transfer' %}
-  <div class="d-flex align-items-start flex-wrap gap-4" style="page-break-inside: avoid;">
-    <!-- Ľavý blok: IBAN/BIC -->
-    <div class="pe-3">
-      <p class="mb-1"><strong>IBAN:</strong> {{ invoice.company.iban }}</p>
-      <p class="mb-0"><strong>BIC:</strong> {{ invoice.company.bic }}</p>
-    </div>
-
-    <!-- Pravý blok: QR -->
-    {% if qr_svg %}
-      <div class="ms-auto text-center" style="min-width: 180px;">
-        <div style="width:170px">{{ qr_svg|safe }}</div>
-        <div class="text-muted small mt-1">
-          IBAN: {{ invoice.company.iban }} • VS: {{ invoice.invoice_number }}
+  <div class="card border-0 shadow-sm my-4">
+    <div class="card-body">
+      <div class="row g-4 align-items-center">
+        <div class="col-lg-7">
+          <div class="d-flex flex-column flex-sm-row flex-wrap align-items-start gap-3">
+            <div>
+              <div class="text-secondary small">Spôsob úhrady</div>
+              
+              <div class="fw-semibold">
+                {% if invoice.payment_method.value == 'bank_transfer' %}Bankový prevod{% elif invoice.payment_method.value == 'cash' %}Hotovosť{% else %}{{ invoice.payment_method.value }}{% endif %}
+              </div>
+            </div>
+            {% if invoice.payment_method.value == 'bank_transfer' %}
+            <div class="vr d-none d-sm-block"></div>
+            <div>
+              <div class="text-secondary small">IBAN</div>
+              <div class="fw-semibold">{{ invoice.company.iban }}</div>
+            </div>
+            <div>
+              <div class="text-secondary small">BIC</div>
+              <div class="fw-semibold">{{ invoice.company.bic }}</div>
+            </div>
+            <div>
+            <div class="text-secondary small">Variabilný symbol</div>
+            <div class="fw-semibold">{{ invoice.variable_symbol }}</div>
+          </div>
+            {% endif %}
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <div class="row text-center">
+            <div class="col">
+              <small class="text-secondary">Vystavená</small>
+              <div class="fw-semibold">{{ invoice.date.strftime('%d.%m.%Y') }}</div>
+            </div>
+            <div class="col">
+              <small class="text-secondary">Dodanie</small>
+              <div class="fw-semibold">{{ invoice.date.strftime('%d.%m.%Y') }}</div>
+            </div>
+            <div class="col">
+              <small class="text-secondary">Splatnosť</small>
+              <div class="fw-semibold">{{ invoice.due_date.strftime('%d.%m.%Y') }}</div>
+            </div>
+          </div>
         </div>
       </div>
-    {% endif %}
-  </div>
 
-
-    {% endif %}
-
-    <div class="row text-center">
-      <div class="col">
-        <small class="text-muted">Dátum vystavenia</small>
-        <div><strong>{{ invoice.date.strftime('%d.%m.%Y') }}</strong></div>
+      {% if invoice.payment_method.value == 'bank_transfer' and qr_svg %}
+      <div class="d-flex align-items-start flex-wrap gap-4 mt-3" style="page-break-inside: avoid;">
+        <div class="ms-auto text-center" style="min-width: 180px;">
+          <div style="width:170px">{{ qr_svg|safe }}</div>
+          <div class="text-muted small mt-1">IBAN: {{ invoice.company.iban }} • VS: {{ invoice.variable_symbol }}</div>
+        </div>
       </div>
-      <div class="col">
-        <small class="text-muted">Dátum dodania</small>
-        <div><strong>{{ invoice.date.strftime('%d.%m.%Y') }}</strong></div>
-      </div>
-      <div class="col">
-        <small class="text-muted">Splatnosť faktúry</small>
-        <div><strong>{{ invoice.due_date.strftime('%d.%m.%Y') }}</strong></div>
-      </div>
+      {% endif %}
     </div>
   </div>
 
   <!-- Items -->
-  <table class="table table-bordered">
-    <thead class="table-light">
-      <tr>
-        <th>Popis</th>
-        <th class="text-end">Množstvo</th>
-        <th>MJ</th>
-        <th class="text-end">Cena za MJ</th>
-        <th class="text-end">Celkom</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in invoice.items %}
-      <tr>
-        <td>{{ item.description }}</td>
-        <td class="text-end">{{ item.quantity }}</td>
-        <td>{{ item.unit or '' }}</td>
-        <td class="text-end">{{ "%.2f"|format(item.price_per_item) }} {{ invoice.currency }}</td>
-        <td class="text-end">{{ "%.2f"|format(item.total_cost) }} {{ invoice.currency }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Popis</th>
+          <th class="text-end" style="width:10%">Množstvo</th>
+          <th style="width:10%">MJ</th>
+          <th class="text-end" style="width:15%">Cena za MJ</th>
+          <th class="text-end" style="width:15%">Celkom</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in invoice.items %}
+        <tr>
+          <td>{{ item.description }}</td>
+          <td class="text-end">{{ item.quantity }}</td>
+          <td>{{ item.unit or '' }}</td>
+          <td class="text-end">{{ "%.2f"|format(item.price_per_item) }} {{ invoice.currency }}</td>
+          <td class="text-end">{{ "%.2f"|format(item.total_cost) }} {{ invoice.currency }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
   <!-- Totals -->
-  {% if invoice.company.is_vat_payer %}
-    {% set vat_amount = (invoice.total_cost * invoice.vat_rate / 100) %}
-    {% set total_with_vat = (invoice.total_cost + vat_amount) %}
-    <div class="mt-3">
-      <p>Základ DPH: {{ "%.2f"|format(invoice.total_cost) }} {{ invoice.currency }}</p>
-      <p>Sadzba DPH: {{ "%.2f"|format(invoice.vat_rate) }}%</p>
-      <p>DPH: {{ "%.2f"|format(vat_amount) }} {{ invoice.currency }}</p>
-      <h4>Spolu na úhradu: {{ "%.2f"|format(total_with_vat) }} {{ invoice.currency }}</h4>
+  <div class="row g-3 justify-content-end">
+    <div class="col-md-6 col-lg-5 col-xl-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          {% if invoice.company.is_vat_payer %}
+            {% set vat_amount = (invoice.total_cost * invoice.vat_rate / 100) %}
+            {% set total_with_vat = (invoice.total_cost + vat_amount) %}
+            <div class="d-flex justify-content-between"><span>Základ DPH</span><span>{{ "%.2f"|format(invoice.total_cost) }} {{ invoice.currency }}</span></div>
+            <div class="d-flex justify-content-between"><span>Sadzba DPH</span><span>{{ "%.2f"|format(invoice.vat_rate) }}%</span></div>
+            <div class="d-flex justify-content-between"><span>DPH</span><span>{{ "%.2f"|format(vat_amount) }} {{ invoice.currency }}</span></div>
+            <hr>
+            <div class="d-flex justify-content-between fs-5 fw-semibold"><span>Spolu na úhradu</span><span>{{ "%.2f"|format(total_with_vat) }} {{ invoice.currency }}</span></div>
+          {% else %}
+            <div class="d-flex justify-content-between fs-5 fw-semibold"><span>Celkom</span><span>{{ "%.2f"|format(invoice.total_cost) }} {{ invoice.currency }}</span></div>
+          {% endif %}
+        </div>
+      </div>
     </div>
-  {% else %}
-    <h4 class="mt-3 text-end">Celkom: {{ "%.2f"|format(invoice.total_cost) }} {{ invoice.currency }}</h4>
-  {% endif %}
+  </div>
 
   <!-- Signatures -->
   <div class="row mt-5">
-    <div class="col text-center">
-      <strong>Vyhotovil:</strong><br>
-      <img src="{{ url_for('static', filename='stamp.png') }}" alt="Stamp" style="max-height: 80px;"><br>
-      <hr class="w-50 mx-auto">
+    <div class="col-md-6 text-center">
+      <div class="mb-2 fw-semibold pa">Vyhotovil</div>
+      {% if invoice.company.stamp_url %}
+        <img src="{{ invoice.company.stamp_url }}" alt="Pečiatka" style="height: 120px; object-fit: contain;">
+      {% endif %}
+      <hr class="w-50 mx-auto my-3">
     </div>
-    <div class="col text-center">
-      <strong>Prevzal:</strong><br><br><br><br>
-      <hr class="w-50 mx-auto">
+    <div class="col-md-6 text-center">
+      <div class="mb-2 fw-semibold">Prevzal</div>
+      <div style="height: 120px;"></div>
+      <hr class="w-50 mx-auto my-5">
     </div>
   </div>
 
 </div>
+
+<style>
+@media print {
+  .d-print-none { display: none !important; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .card, .table { box-shadow: none !important; }
+}
+</style>
 {% endblock %}
