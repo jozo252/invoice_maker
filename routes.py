@@ -138,6 +138,7 @@ def stripe_webhook():
 @login_required
 def create_checkout_session():
     stripe.api_key = current_app.config['STRIPE_API_KEY']
+    domain = request.url_root.rstrip('/')
     session = stripe.checkout.Session.create(
         payment_method_types=['card'],
         mode='subscription',
@@ -145,7 +146,7 @@ def create_checkout_session():
             'price': current_app.config['STRIPE_PRICE_ID'],  # replace with your price ID
             'quantity': 1,
         }],
-        success_url=url_for('main.success', _external=True) + '?session_id={CHECKOUT_SESSION_ID}',
+        success_url=f"{domain}/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=url_for('main.cancel', _external=True),  # you'll want to make a cancel page too
         customer_email=current_user.email,
         metadata={
@@ -879,6 +880,8 @@ def edit_invoice(invoice_id):
         inv.date = _parse_date(request.form.get("date"), inv.date)
         inv.due_date = _parse_date(request.form.get("due_date"), inv.due_date)
         inv.payment_method = request.form.get("payment_method") or inv.payment_method
+        inv.variable_symbol = request.form.get("variable_symbol") or inv.variable_symbol
+
         # VAT as Decimal (percent)
         try:
             inv.vat_rate = _to_decimal(request.form.get("vat_rate", inv.vat_rate or "0"))
