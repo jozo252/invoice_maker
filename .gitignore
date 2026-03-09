@@ -5,8 +5,13 @@ __pycache__/
 
 # Virtual env
 venv/
+.venv
 
 # Local secrets & DB
 .env
 instance/*.db
 EOF
+
+uploads/
+*.tar.gz
+*.tar.gz

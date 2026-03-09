@@ -1,10 +1,17 @@
+
 {% extends "base.html" %}
 
 {% block title %}Faktúra {{ invoice.invoice_number }}{% endblock %}
 
 {% block content %}
 <div class="container-xl py-4 py-md-5">
-
+{% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} mt-2">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+                {% endwith %}
   <!-- Header & actions -->
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
     <div>
@@ -21,6 +28,21 @@
       <button onclick="window.print()" class="btn btn-white border">
         <i class="ti ti-printer me-1"></i> Tlačiť
       </button>
+	<form method="POST" action="{{ url_for('main.send_invoice_email_route', invoice_id=invoice.id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
+  
+      
+ <form method="POST" action="{{ url_for('main.send_invoice_email_route', invoice_id=invoice.id) }}" enctype="multipart/form-data">
+  <small class="text-muted">
+Voliteľné – napr. fotka pracovných hodín alebo cenová ponuka.
+</small>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="file" name="attachment" accept=".jpg,.jpeg,.png,.pdf" class="form-control mt-3">
+  <button type="submit" class="btn btn-secondary mt-2">Odoslať s prílohou</button>
+</form>
+
+</div>
     </div>
   </div>
 

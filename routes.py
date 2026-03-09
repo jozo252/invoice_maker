@@ -5,6 +5,8 @@ from difflib import get_close_matches
 from ai_chat import invoice_maker
 from extensions import db, mail
 from flask_mail import Message
+from uuid import uuid4
+from werkzeug.utils import secure_filename
 from pdf_generator import render_invoice_to_pdf
 import os
 import stripe
@@ -25,6 +27,14 @@ import mimetypes
 
 
 
+
+ALLOWED_EXT = {"jpg", "jpeg"}
+
+def allowed_file(filename: str) -> bool:
+    if not filename or "." not in filename:
+        return False
+    ext = filename.rsplit(".", 1)[1].lower()
+    return ext in ALLOWED_EXT
 
 
 
@@ -373,35 +383,63 @@ def download_invoice(invoice_id):
     return send_file(pdf_path, as_attachment=True, download_name=f"{invoice.invoice_number}.pdf")
 
 
+@main.route('/invoice/<int:invoice_id>/send_email', methods=['POST'])
+@login_required
+def send_invoice_email_route(invoice_id):
+    invoice = Invoice.query.filter_by(id=invoice_id, user_id=current_user.id).first_or_404()
+    try:
+        result = send_invoice_email(invoice, attachment_file=request.files.get("attachment"))
+        flash(result, 'success')
+    except Exception as e:
+        flash(f'Chyba při odesílání emailu: {str(e)}', 'danger')
+
+    return redirect(url_for('main.view_invoice', invoice_id=invoice_id))
 
 
-
-def send_invoice_email(invoice, client, company):
+def send_invoice_email(invoice,attachment_file=None):
     # Kontext pre HTML renderovanie PDF
     context = {
-        "invoice_data": invoice,
-        "client_data": client,
-        "company_data": company
+        "invoice": invoice,
+        "client": invoice.client,
+        "company": invoice.company
     }
 
     # Vytvorenie dočasného PDF súboru
     pdf_path = render_invoice_to_pdf("invoice_pdf.html", context)
+    temp_attachment_path = None
+    original_attachment_name = None
 
     try:
+        if attachment_file:
+            temp_attachment_path, original_attachment_name = save_temp_attachment(attachment_file)
         msg = Message(
             subject=f"Faktúra č. {invoice.invoice_number}",
-            recipients=['ferko.lizak69@gmail.com'],  # ← Reálne použitie
+            recipients=[invoice.client.email],  # ← Reálne použitie
             body=f"Dobrý deň,\n\nV prílohe vám posielam  faktúru {invoice.invoice_number}."
         )
 
         with open(pdf_path, "rb") as fp:
-            msg.attach(f"{invoice.invoice_number}.pdf", "application/pdf", fp.read())
+            msg.attach(f"{invoice.invoice_number}.pdf", "application/pdf",fp.read())
+        if temp_attachment_path:
+            ext = os.path.splitext(original_attachment_name)[1].lower()
+
+            content_type_map = {
+                ".jpg": "image/jpeg",
+                ".jpeg": "image/jpeg",
+                ".png": "image/png",
+                ".pdf": "application/pdf",
+            }
+            with open(temp_attachment_path, "rb") as fp:
+                msg.attach(
+                    original_attachment_name,
+                    content_type_map.get(ext, "application/octet-stream"),
+                    fp.read())
 
         mail.send(msg)
         print(f"[✓] Email odoslaný na {msg.recipients}")
 
 
-        return f"✅ Faktúra {invoice.invoice_number} bola úspešne odoslaná na {client.email}."
+        return f"✅ Faktúra {invoice.invoice_number} bola úspešne odoslaná na {invoice.client.email}."
 
     except Exception as e:
         print(f"[✗] Chyba pri odosielaní e-mailu: {str(e)}")
@@ -410,6 +448,27 @@ def send_invoice_email(invoice, client, company):
     finally:
         if os.path.exists(pdf_path):
             os.remove(pdf_path)
+        if temp_attachment_path and os.path.exists(temp_attachment_path):
+            os.remove(temp_attachment_path)
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf"}
+def save_temp_attachment(file):
+    if not file or not file.filename:
+        return None, None
+
+    original_name = secure_filename(file.filename)
+    ext = os.path.splitext(original_name)[1].lower()
+
+    if ext not in ALLOWED_EXTENSIONS:
+        raise ValueError("Nepovolený typ súboru.")
+
+    upload_dir = current_app.config["UPLOAD_FOLDER"]
+    os.makedirs(upload_dir, exist_ok=True)
+
+    temp_name = f"{uuid4().hex}{ext}"
+    file_path = os.path.join(upload_dir, temp_name)
+    file.save(file_path)
+
+    return file_path, original_name
 def get_client_by_name(data):
     all_clients = Client.query.filter_by(user_id=current_user.id)
     names = [client.name for client in all_clients]
