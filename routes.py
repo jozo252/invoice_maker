@@ -397,11 +397,43 @@ def send_invoice_email_route(invoice_id):
 
 
 def send_invoice_email(invoice,attachment_file=None):
+
+    # compute amount (same as view_invoice)
+    base = Decimal(str(invoice.total_cost or 0))
+    if getattr(invoice.company, "is_vat_payer", False):
+        vat_rate = Decimal(str(invoice.vat_rate or 0)) / Decimal("100")
+        amount_due = (base * (Decimal("1") + vat_rate)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    else:
+        amount_due = base.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    qr_svg = None
+    if invoice.company and invoice.company.iban:
+        amount_for_qr = amount_due if amount_due >= Decimal("0.01") else None
+        qr_svg = epc_qr_svg(
+            recipient_name=invoice.company.name,
+            iban=invoice.company.iban,
+            bic=invoice.company.bic,
+            amount_eur=amount_for_qr,
+            text=f"Invoice {invoice.invoice_number}"
+        )
+
+    if invoice.company:
+        stamp_abs = os.path.join(
+            current_app.static_folder, 'uploads', f'stamp_{invoice.company.user_id}.png'
+        )
+        if os.path.exists(stamp_abs):
+            mime, _ = mimetypes.guess_type(stamp_abs)
+            mime = mime or "image/png"
+            with open(stamp_abs, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("ascii")
+            stamp_data_uri = f"data:{mime};base64,{b64}"
     # Kontext pre HTML renderovanie PDF
     context = {
         "invoice": invoice,
         "client": invoice.client,
-        "company": invoice.company
+        "company": invoice.company,
+        "qr_svg": qr_svg,
+        "stamp_data_uri": stamp_data_uri
     }
 
     # Vytvorenie dočasného PDF súboru

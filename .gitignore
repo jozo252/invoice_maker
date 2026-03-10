@@ -15,3 +15,6 @@ EOF
 uploads/
 *.tar.gz
 *.tar.gz
+*.pyc
+*.pyc
+*.ini
