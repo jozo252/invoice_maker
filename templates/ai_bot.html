@@ -1,52 +1,52 @@
 {% extends "base.html" %}
 {% block content %}
+
 {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} mt-2">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
-                {% endwith %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} mt-2">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
 
-<h1 style="text-align: center;">Zatiaľ sa pripravuje</h1>
+<h1 class="text-center">AI faktúra</h1>
 
-<h2>AI faktúra</h2>
-
-<form method="post" action="{{ url_for('aibot.ai_preview') }}" class="mt-3">
+<form method="post" action="{{ url_for('aibot.ai_preview') }}" class="mt-4">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-  <div class="mb-3">
-    <label for="client_id" class="form-label">Klient</label>
-    <select name="client_id" id="client_id" class="form-select" required>
-      <option value="">-- vyber --</option>
-      {% for c in clients %}
-        <option value="{{ c.id }}">{{ c.name }}</option>
-      {% endfor %}
-    </select>
-  </div>
-
+  <!-- Firma -->
   <div class="mb-3">
     <label for="company_id" class="form-label">Moja firma</label>
     <select name="company_id" id="company_id" class="form-select" required>
-      <option value="">-- vyber --</option>
+      <option value="">-- vyber firmu --</option>
       {% for c in companies %}
         <option value="{{ c.id }}">{{ c.name }}</option>
       {% endfor %}
     </select>
   </div>
 
-  <div class="mb-3">
-    <label for="invoice_number" class="form-label">Číslo faktúry (nepovinné)</label>
-    <input type="text" name="invoice_number" id="invoice_number" class="form-control" placeholder="napr. INV-2025-001">
-    <div class="form-text">Ak necháš prázdne, vygeneruje sa v náhľade.</div>
-  </div>
-
+  <!-- AI input -->
   <div class="mb-3">
     <label for="user_input" class="form-label">Text pre AI</label>
-    <textarea name="user_input" id="user_input" rows="10" class="form-control" placeholder="Sem vlož text (klient, položky, ceny, dátumy, DPH, spôsob úhrady)..."></textarea>
+    <textarea 
+      name="user_input" 
+      id="user_input" 
+      rows="10" 
+      class="form-control"
+      placeholder="Napríklad:
+Klient: Jano Novák
+Email: jano@gmail.com
+Položky:
+- Elektroinštalácia 2x 100€
+- Materiál 50€
+DPH: 20%
+Splatnosť: 7 dní">
+    </textarea>
   </div>
 
-  <button type="submit" class="btn btn-primary">AI → Náhľad</button>
+  <button type="submit" class="btn btn-primary w-100">
+    Vytvoriť náhľad faktúry
+  </button>
 </form>
 
 {% if ai_errors %}

@@ -11,25 +11,33 @@ load_dotenv()  # load .env file if present
 
 
 SYSTEM = (
-    "You are an invoice extraction assistant. "
-    "Your task is to read unstructured user text and extract invoice data. "
-    "Return ONLY a JSON object with these keys: \n"
-    "- customer_name: string (required)\n"
+    "You are an invoice data extraction assistant. "
+    "Read the user's unstructured text and extract invoice data. "
+    "Return ONLY a valid JSON object with exactly these keys:\n"
+    "- customer_name: string or null\n"
     "- customer_email: string or null\n"
     "- issue_date: string in format YYYY-MM-DD or null\n"
     "- due_date: string in format YYYY-MM-DD or null\n"
+    "- due_in_days: integer or null\n"
     "- currency: 3-letter code (EUR, USD, CZK, PLN, etc.) or null\n"
-    "- vat_rate: number (percentage, e.g., 20.0) or null\n"
-    "- payment_method: one of [bank_transfer, cash, card] or null\n"
-    "- status: one of [unpaid, paid] or null (do not use overdue/waiting)\n"
-    "- items: list of objects with {name, qty, unit_price} "
-    "  where qty is number, unit_price is number\n"
+    "- vat_rate: number or null\n"
+    "- payment_method: one of [bank_transfer, cash, card, other] or null\n"
+    "- status: one of [unpaid, paid] or null\n"
+    "- items: list of objects with {name, qty, unit, unit_price}\n"
+    "  where name is string, qty is number or null, unit is string or null, unit_price is number or null\n"
     "- notes: string or null\n"
-    "- confidence: number between 0.0 and 1.0 estimating your extraction confidence\n\n"
+    "- missing_fields: list of strings\n"
+    "- warnings: list of strings\n\n"
     "Rules:\n"
-    "- Always return valid JSON only, no explanations.\n"
-    "- If a field is missing in the text, set it to null.\n"
-    "- Ensure at least one item in the 'items' list.\n"
+    "- Return valid JSON only. No markdown. No explanations.\n"
+    "- Do not invent missing values.\n"
+    "- If a field is not clearly present in the text, set it to null.\n"
+    "- If no invoice items are clearly present, return an empty items list.\n"
+    "- Do not calculate totals.\n"
+    "- Do not guess customer email, dates, VAT, or payment method.\n"
+    "- If due terms are relative (e.g. '7 days'), use due_in_days.\n"
+    "- Add unclear or ambiguous extractions to warnings.\n"
+    "- Add required missing business fields to missing_fields.\n"
 )
 
 
@@ -105,3 +113,5 @@ def create_invoice_from_model(data: dict) -> int:
 
     db.session.commit()
     return db_inv.id
+
+

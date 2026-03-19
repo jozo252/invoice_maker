@@ -18,12 +18,38 @@ from ai import create_invoice_from_model  # alebo importni odkiaľ ju máš
 
 aibot = Blueprint("aibot", __name__)
 
+
+def get_client_company_from_ai(ai_data: dict, user_id: int):
+    customer_name = ai_data.get("customer_name")
+    customer_email = ai_data.get("customer_email")
+    client = None
+
+    if customer_email:
+        client = Client.query.filter_by(
+            user_id=user_id,
+            email=customer_email
+        ).first()
+
+    if not client and customer_name:
+        client = Client.query.filter_by(
+            user_id=user_id,
+            name=customer_name
+        ).first()
+
+
+    company = Company.query.filter_by(user_id=current_user.id).first()
+    return client, company
+
 @aibot.route("/ai_bot", methods=["GET"])
 @login_required
 def ai_bot():
     clients = Client.query.filter_by(user_id=current_user.id).all()
     companies = Company.query.filter_by(user_id=current_user.id).all()
     return render_template("ai_bot.html", clients=clients, companies=companies)
+
+
+
+#prvotný návrh, ešte to chce doladiť, ale už to funguje v základe
 
 @aibot.route("/invoice_preview", methods=["POST"])
 @login_required
@@ -32,23 +58,34 @@ def ai_preview():
     companies = Company.query.filter_by(user_id=current_user.id).all()
 
     user_text = (request.form.get("user_input") or "").strip()
-    client_id = int(request.form.get("client_id") or 0)
-    company_id = int(request.form.get("company_id") or 0)
+    #client_id = int(request.form.get("client_id") or 0)
+    #company_id = int(request.form.get("company_id") or 0)
     invoice_number = (request.form.get("invoice_number") or f"INV-{date_cls.today():%Y}-{randint(1000,9999)}").upper()
-
-    # základná kontrola klient/firmy
-    client_ok = Client.query.filter_by(id=client_id, user_id=current_user.id).first()
-    company_ok = Company.query.filter_by(id=company_id, user_id=current_user.id).first()
-    if not client_ok or not company_ok:
-        flash("Vyber platného klienta a firmu.", "danger")
-        return render_template("ai_bot.html", clients=clients, companies=companies)
-
     if not user_text:
-        flash("Vlož text pre AI.", "warning")
+            flash("Vlož text pre AI.", "warning")
+            return render_template("ai_bot.html", clients=clients, companies=companies)
+    ai_raw = call_llm_extract(user_text)
+    # základná kontrola klient/firmy
+    #client_ok = Client.query.filter_by(id=client_id, user_id=current_user.id).first()
+    #company_ok = Company.query.filter_by(id=company_id, user_id=current_user.id).first()
+    client_ok, company_ok = get_client_company_from_ai(ai_raw, current_user.id)
+    print('client_ok',client_ok)
+    print('company_ok', company_ok)
+    if not company_ok:
+        flash("Nemáš vytvorenú firmu.", "warning")
         return render_template("ai_bot.html", clients=clients, companies=companies)
+    company_id = company_ok.id
+    if not client_ok:
+        flash("Nemáš vytvoreného klienta. AI sa pokúsi ho vytvoriť podľa textu.", "info")
+        client_id = None
+    else:
+        client_id = client_ok.id
+    
+
+    
 
     # 1) AI draft
-    ai_raw = call_llm_extract(user_text)
+    
     try:
         ai_obj = InvoiceAI(**ai_raw)     # validácia AI výstupu (len AI polia)
     except ValidationError as e:
@@ -72,6 +109,9 @@ def ai_preview():
 
     # 4) Náhľad
     return render_template("invoice_preview.html", db_json=inv.model_dump())
+
+
+#------------------------AI potvrdenie a uloženie do DB------------------------
 
 @aibot.route("/ai/confirm", methods=["POST"])
 @login_required

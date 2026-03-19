@@ -60,12 +60,14 @@ class InvoiceModel(BaseModel):
     user_id: int
     currency: str
     vat_rate: float = 0.0
-    client_id: int
+    client_id: int | None
     company_id: int
     items: List[InvoiceItemModel]
     payment_method: PaymentMethodLiteral = "bank_transfer"
     status: InvoiceStatusLiteral = "unpaid"
     total_cost: Optional[float] = None  # spočítame z items + DPH
+    warnings: list[str] = []
+    missing_fields: list[str] = []
 
     @field_validator("invoice_number", mode="before")
     @classmethod
