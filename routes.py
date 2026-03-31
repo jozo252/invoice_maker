@@ -912,6 +912,7 @@ def epc_qr_svg(*, recipient_name: str, iban: str,
         return None  # bez IBAN QR nemá smysl
 
     # amount musí být vždy – pokud None nebo <0.01 → 0.00
+    
     if amount_eur is None or amount_eur < Decimal("0.01"):
         amt = Decimal("0.00")
     else:

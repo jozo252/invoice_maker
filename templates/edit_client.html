@@ -72,13 +72,13 @@
         <div class="row g-3">
           <div class="col-md-4">
             <label class="form-label" for="ICO">IČO <span class="text-danger">*</span></label>
-            <input class="form-control" id="ICO" name="ICO" type="text" inputmode="numeric" pattern="\d{8}" placeholder="12345678" value="{{ client.ico }}" required>
+            <input class="form-control" id="ICO" name="ICO" type="text" inputmode="numeric" pattern="\d{8}" placeholder="12345678" value="{{ client.ico }}">
             <div class="form-text">8 číslic bez medzier.</div>
             <div class="invalid-feedback">IČO má mať 8 číslic.</div>
           </div>
           <div class="col-md-4">
             <label class="form-label" for="DIC">DIČ <span class="text-danger">*</span></label>
-            <input class="form-control" id="DIC" name="DIC" type="text" inputmode="numeric" pattern="\d{10}" placeholder="1234567890" value="{{ client.dic }}" required>
+            <input class="form-control" id="DIC" name="DIC" type="text" inputmode="numeric" pattern="\d{10}" placeholder="1234567890" value="{{ client.dic }}" >
             <div class="form-text">Zvyčajne 10 číslic.</div>
             <div class="invalid-feedback">DIČ má mať 10 číslic.</div>
           </div>

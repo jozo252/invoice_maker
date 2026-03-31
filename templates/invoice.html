@@ -189,7 +189,7 @@ Voliteľné – napr. fotka pracovných hodín alebo cenová ponuka.
     <div class="col-md-6 col-lg-5 col-xl-4">
       <div class="card border-0 shadow-sm">
         <div class="card-body">
-          {% if invoice.company.is_vat_payer %}
+          {% if invoice.vat_rate is not none or invoice.vat_rate != 0 %}
             {% set vat_amount = (invoice.total_cost * invoice.vat_rate / 100) %}
             {% set total_with_vat = (invoice.total_cost + vat_amount) %}
             <div class="d-flex justify-content-between"><span>Základ DPH</span><span>{{ "%.2f"|format(invoice.total_cost) }} {{ invoice.currency }}</span></div>

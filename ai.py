@@ -16,6 +16,8 @@ SYSTEM = (
     "Return ONLY a valid JSON object with exactly these keys:\n"
     "- customer_name: string or null\n"
     "- customer_email: string or null\n"
+    "- customer_ico: string or null\n"
+    "- customer_dic: string or null\n"
     "- issue_date: string in format YYYY-MM-DD or null\n"
     "- due_date: string in format YYYY-MM-DD or null\n"
     "- due_in_days: integer or null\n"
@@ -97,6 +99,7 @@ def create_invoice_from_model(data: dict) -> int:
         date=inv.inv_date,
         due_date=inv.due_date,
         user_id=inv.user_id,
+        variable_symbol=inv.variable_symbol,
         currency=inv.currency,
         total_cost=grand_total,
         vat_rate=inv.vat_rate,

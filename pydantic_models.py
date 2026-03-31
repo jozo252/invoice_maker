@@ -35,8 +35,11 @@ class InvoiceItemModel(BaseModel):
         return None if v is None else _as_money(v)
 
 class InvoiceAI(BaseModel):
-    customer_name: str
+    customer_name: Optional[str] = None
     customer_email: Optional[str] = None
+    customer_ico: Optional[str] = None
+    customer_dic: Optional[str] = None
+
     issue_date: Optional[date] = None
     due_date: Optional[date] = None
     currency: Optional[str] = 'EUR'
@@ -55,6 +58,7 @@ class InvoiceAI(BaseModel):
 class InvoiceModel(BaseModel):
     model_config = ConfigDict(extra='forbid')
     invoice_number: str
+    variable_symbol: Optional[str] = None
     inv_date: date
     due_date: date
     user_id: int

@@ -10,15 +10,35 @@
 {% endwith %}
 
 <h1 class="text-center">AI faktúra</h1>
+<p>"""Ahoj, prosím vystaviť faktúru.
 
-<form method="post" action="{{ url_for('aibot.ai_preview') }}" class="mt-4">
+Odberateľ: Jano Novák, ferko.lizak69@gmail.com
+Mena: €
+Dátum vystavenia: 21.09.2025
+Splatnosť: 30.09.2025
+Spôsob úhrady: bank transfer
+DPH: 20 %
+
+Položky:
+- Webdesign – množstvo 2 ks, cena 500,00 € / ks
+- Hosting – množstvo 1 ks, cena 100 € / ks
+- Úpravy loga – množstvo 1 hod, cena 35,50 € / hod
+
+Poznámka: dodať prístupové údaje po úhrade.
+
+--
+Ďakujem,
+Adam
+"""</p>
+
+<form method="post" id="ai-draft-form" action="{{ url_for('aibot.ai_preview') }}" class="mt-4">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
   <!-- Firma -->
   <div class="mb-3">
     <label for="company_id" class="form-label">Moja firma</label>
     <select name="company_id" id="company_id" class="form-select" required>
-      <option value="">-- vyber firmu --</option>
+     
       {% for c in companies %}
         <option value="{{ c.id }}">{{ c.name }}</option>
       {% endfor %}
@@ -44,9 +64,28 @@ Splatnosť: 7 dní">
     </textarea>
   </div>
 
-  <button type="submit" class="btn btn-primary w-100">
-    Vytvoriť náhľad faktúry
+  <button type="submit" class="btn btn-primary mt-3" id="generate-btn">
+  <span class="btn-text">Generovať návrh</span>
+  <span class="btn-loading d-none">
+    <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+    Generujem návrh...
+    
+  </span>
+</button>
+<div id="loading-note" class="form-text d-none">
+  Spracovanie môže trvať pár sekúnd.
+</div>
+<div class="d-flex gap-2 align-items-center mb-3">
+  <button type="button" class="btn btn-outline-secondary" id="record-btn">
+    🎤 Spustiť nahrávanie
   </button>
+
+  <button type="button" class="btn btn-outline-danger d-none" id="stop-btn">
+    ⏹ Zastaviť
+  </button>
+  </div>
+
+  <span id="recording-status" class="text-muted"></span>
 </form>
 
 {% if ai_errors %}
@@ -55,5 +94,123 @@ Splatnosť: 7 dní">
     <pre class="mb-0">{{ ai_errors|tojson(indent=2) }}</pre>
   </div>
 {% endif %}
+<script>
+   document.addEventListener("DOMContentLoaded", function () {
+    
+    const form = document.getElementById("ai-draft-form");
+    const button = document.getElementById("generate-btn");
+    const loadingNote = document.getElementById("loading-note");
 
+    if (!form || !button) return;
+
+    form.addEventListener("submit", function () {
+      const btnText = button.querySelector(".btn-text");
+      const btnLoading = button.querySelector(".btn-loading");
+
+      button.disabled = true;
+
+      if (btnText) {
+        btnText.classList.add("d-none");
+      }
+
+      if (btnLoading) {
+        btnLoading.classList.remove("d-none");
+      }
+      if (loadingNote) {
+        loadingNote.classList.remove("d-none");
+      }
+    });
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+  const recordBtn = document.getElementById("record-btn");
+  const stopBtn = document.getElementById("stop-btn");
+  const statusEl = document.getElementById("recording-status");
+  const promptEl = document.getElementById("user_input");
+
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let stream = null;
+
+  async function startRecording() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      mediaRecorder.addEventListener("dataavailable", (event) => {
+        if (event.data.size > 0) {
+          audioChunks.push(event.data);
+        }
+      });
+
+      mediaRecorder.addEventListener("stop", async () => {
+        const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+        await sendAudioToBackend(audioBlob);
+
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+      });
+
+      mediaRecorder.start();
+
+      recordBtn.classList.add("d-none");
+      stopBtn.classList.remove("d-none");
+      statusEl.textContent = "Nahrávanie beží...";
+    } catch (error) {
+      console.error(error);
+      statusEl.textContent = "Nepodarilo sa zapnúť mikrofón.";
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      mediaRecorder.stop();
+      statusEl.textContent = "Prepisujem audio...";
+    }
+
+    stopBtn.disabled = true;
+  }
+
+  async function sendAudioToBackend(audioBlob) {
+    try {
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "recording.webm");
+
+      const response = await fetch("/api/transcribe-audio", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Transkripcia zlyhala.");
+      }
+
+      if (data.text) {
+        if (promptEl.value.trim()) {
+          promptEl.value = promptEl.value.trim() + "\n" + data.text.trim();
+        } else {
+          promptEl.value = data.text.trim();
+        }
+        statusEl.textContent = "Hotovo.";
+      } else {
+        statusEl.textContent = "Nepodarilo sa získať text.";
+      }
+    } catch (error) {
+      console.error(error);
+      statusEl.textContent = error.message || "Chyba pri transkripcii.";
+    } finally {
+      stopBtn.classList.add("d-none");
+      stopBtn.disabled = false;
+      recordBtn.classList.remove("d-none");
+    }
+  }
+
+  recordBtn.addEventListener("click", startRecording);
+  stopBtn.addEventListener("click", stopRecording);
+});
+</script>
 {% endblock %}
