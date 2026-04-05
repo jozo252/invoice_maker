@@ -40,11 +40,11 @@ SYSTEM = (
     "- If due terms are relative (e.g. '7 days'), use due_in_days.\n"
     "- Add unclear or ambiguous extractions to warnings.\n"
     "- Add required missing business fields to missing_fields.\n"
+    "- Return values in input language(days,dni,tags)\n"
 )
 
-
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def call_llm_extract(user_text: str) -> dict:
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     resp = client.chat.completions.create(
         model="gpt-4o-mini",
         response_format={"type": "json_object"},  # force JSON
@@ -62,8 +62,18 @@ def call_llm_extract(user_text: str) -> dict:
         # extreme fallback
         return {"customer_name": "", "items": []}
 
+def transcribe_ai(temp_path):
+    with open(temp_path, "rb") as f:
+        transcript = client.audio.transcriptions.create(
+            model="gpt-4o-transcribe",
+            file=f
+        )
 
+    text = getattr(transcript, "text", None) or ""
+    print(text)
+    return text
 
+    
 def _round2(x: float) -> float:
     return float(Decimal(str(x)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 

@@ -17,7 +17,10 @@ from extensions import db
 from ai import call_llm_extract
 from pydantic_models import InvoiceModel, InvoiceAI
 from normalize_ai import normalize_ai_payload
-from ai import create_invoice_from_model  # alebo importni odkiaľ ju máš
+from ai import create_invoice_from_model, transcribe_ai  # alebo importni odkiaľ ju máš
+import tempfile
+from app import csrf
+import os
 
 aibot = Blueprint("aibot", __name__)
 
@@ -30,6 +33,7 @@ def invoice_number_generator():
     return f"INV-{today_str}-{number_int}"
 
 def normalize_name(name: str) -> str:
+    print(f"origo: {name}")
     if not name:
         return ""
 
@@ -43,17 +47,20 @@ def normalize_name(name: str) -> str:
     for ch in [".", ",", "-", "_"]:
         name = name.replace(ch, " ")
     name = " ".join(name.split())
-
+    print(f"normalized: {name} ")
     return name
 def get_client_company_from_ai(ai_data: dict, user_id: int):
-    raw_name = ai_data.get("customer_name")
-    customer_name = normalize_name(raw_name) if raw_name else None
+    customer_name = ai_data.get("customer_name")or ""
+    #raw_name = ai_data.get("customer_name")
+    #customer_name = normalize_name(raw_name) if raw_name else None
     customer_email = ai_data.get("customer_email")
     customer_ico = ai_data.get("customer_ico")
 
     client = None
     match_type = None
-
+    print("DB names:")
+    for c in Client.query.filter_by(user_id=user_id).all():
+        print(f"[{c.name}]")
     if customer_email:
         client = Client.query.filter_by(
             user_id=user_id,
@@ -76,6 +83,7 @@ def get_client_company_from_ai(ai_data: dict, user_id: int):
         match_type = "name"
 
     company = Company.query.filter_by(user_id=user_id).first()
+    print(client)
 
     return client, company, match_type
 def build_preview_data_from_form(form):
@@ -283,8 +291,47 @@ def ai_preview():
     # 4) Náhľad 
     return render_template("invoice_preview.html", db_json=inv.model_dump(), client_data=client_data, match_type=match_type)
 
+@aibot.route("/ai/transcribe-audio", methods=["POST"])
+@login_required
+@csrf.exempt
+def transcribe_audio():
+    audio_file = request.files.get("audio")
 
-#------------------------AI potvrdenie a uloženie do DB------------------------
+    if not audio_file:
+        return jsonify({"error": "Chýba audio súbor."}), 400
+
+    temp_path = None
+
+    try:
+        suffix = os.path.splitext(audio_file.filename)[1] or ".webm"
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+            audio_file.save(temp_file.name)
+            temp_path = temp_file.name
+
+        text = transcribe_ai(temp_path)
+
+        return jsonify({"text": text})
+
+    except Exception as e:
+       # current_app.logger.exception("Transcription failed")
+        return jsonify({"error": f"Transkripcia zlyhala: {str(e)}"}), 500
+
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
+
+
+
+
+
+
+
+
+
+
+
 
 @aibot.route("/ai/confirm", methods=["POST"])
 @login_required

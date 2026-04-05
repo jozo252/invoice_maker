@@ -6,7 +6,7 @@ __pycache__/
 # Virtual env
 venv/
 .venv
-
+.venv/
 # Local secrets & DB
 .env
 instance/*.db
@@ -18,3 +18,6 @@ uploads/
 *.pyc
 *.pyc
 *.ini
+
+
+*.pyd

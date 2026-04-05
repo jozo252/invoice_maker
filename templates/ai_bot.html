@@ -95,38 +95,30 @@ Splatnosť: 7 dní">
   </div>
 {% endif %}
 <script>
-   document.addEventListener("DOMContentLoaded", function () {
-    
-    const form = document.getElementById("ai-draft-form");
-    const button = document.getElementById("generate-btn");
-    const loadingNote = document.getElementById("loading-note");
+document.addEventListener("DOMContentLoaded", function () {
+  const form = document.getElementById("ai-draft-form");
+  const button = document.getElementById("generate-btn");
+  const loadingNote = document.getElementById("loading-note");
 
-    if (!form || !button) return;
-
+  if (form && button) {
     form.addEventListener("submit", function () {
       const btnText = button.querySelector(".btn-text");
       const btnLoading = button.querySelector(".btn-loading");
 
       button.disabled = true;
 
-      if (btnText) {
-        btnText.classList.add("d-none");
-      }
-
-      if (btnLoading) {
-        btnLoading.classList.remove("d-none");
-      }
-      if (loadingNote) {
-        loadingNote.classList.remove("d-none");
-      }
+      if (btnText) btnText.classList.add("d-none");
+      if (btnLoading) btnLoading.classList.remove("d-none");
+      if (loadingNote) loadingNote.classList.remove("d-none");
     });
-  });
+  }
 
-  document.addEventListener("DOMContentLoaded", function () {
   const recordBtn = document.getElementById("record-btn");
   const stopBtn = document.getElementById("stop-btn");
   const statusEl = document.getElementById("recording-status");
   const promptEl = document.getElementById("user_input");
+
+  if (!recordBtn || !stopBtn || !statusEl || !promptEl) return;
 
   let mediaRecorder = null;
   let audioChunks = [];
@@ -146,11 +138,12 @@ Splatnosť: 7 dní">
 
       mediaRecorder.addEventListener("stop", async () => {
         const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-        await sendAudioToBackend(audioBlob);
 
         if (stream) {
           stream.getTracks().forEach(track => track.stop());
         }
+
+        await sendAudioToBackend(audioBlob);
       });
 
       mediaRecorder.start();
@@ -178,7 +171,7 @@ Splatnosť: 7 dní">
       const formData = new FormData();
       formData.append("audio", audioBlob, "recording.webm");
 
-      const response = await fetch("/api/transcribe-audio", {
+      const response = await fetch("/ai/transcribe-audio", {
         method: "POST",
         body: formData
       });
