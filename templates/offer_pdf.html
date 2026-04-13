@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <title>Cenová ponuka</title>
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+      font-size: 13px;
+      color: #222;
+      line-height: 1.35;
+      padding: 28px 32px;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+
+    h1, h2, h3 { margin: 0 0 6px 0; }
+    h1 { font-size: 20px; }
+    h2 { font-size: 16px; }
+    h3 { font-size: 14px; }
+    p { margin: 0 0 4px 0; }
+    small { color: #666; }
+
+    .mb-2{ margin-bottom: 8px; } .mb-3{ margin-bottom: 12px; } .mb-4{ margin-bottom: 16px; }
+    .mt-2{ margin-top: 8px; } .mt-3{ margin-top: 12px; } .mt-4{ margin-top: 16px; } .mt-5{ margin-top: 24px; }
+    .text-right{ text-align: right; } .text-center{ text-align: center; }
+    .muted{ color:#666; }
+    .nowrap{ white-space: nowrap; }
+
+    .split { width: 100%; border-collapse: separate; border-spacing: 0 0; }
+    .split td { vertical-align: top; width: 50%; padding: 0; }
+    .box { border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; }
+
+    table.items { width: 100%; border-collapse: collapse; margin-top: 10px; font-variant-numeric: tabular-nums; }
+    .items th, .items td { border: 1px solid #d2d2d2; padding: 8px; }
+    .items thead th { background: #f6f7f9; text-align: left; }
+    .num { text-align: right; }
+
+    .totals { width: 100%; margin-top: 16px; font-variant-numeric: tabular-nums; }
+    .totals .row { display: table; width: 100%; }
+    .totals .row > div { display: table-cell; }
+    .totals .k { text-align: left; }
+    .totals .v { text-align: right; white-space: nowrap; }
+    .totals .sum { font-weight: 600; font-size: 14px; border-top: 1px solid #ccc; padding-top: 6px; }
+
+    .sigs { width: 100%; margin-top: 32px; }
+    .sigs td { width: 50%; text-align: center; vertical-align: bottom; }
+    .stamp { max-height: 80px; object-fit: contain; }
+    .line { margin: 8px auto 0; height: 1px; background: #999; width: 160px; }
+
+    .avoid-break { page-break-inside: avoid; }
+
+    .dates {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    .dates td {
+      width: 50%;
+      text-align: center;
+      padding: 0 16px;
+      white-space: nowrap;
+      word-break: normal;
+    }
+  </style>
+</head>
+<body>
+
+  <h1 class="mb-4">Cenová ponuka</h1>
+
+  <table class="split mb-3 avoid-break">
+    <tr>
+      <td>
+        <h2>Dodávateľ</h2>
+        <div class="box">
+          <p><strong>{{ company.name }}</strong></p>
+          {% if company.street %}<p>{{ company.street }}</p>{% endif %}
+          {% if company.zip_code or company.city %}
+            <p>{{ company.zip_code or '' }} {{ company.city or '' }}</p>
+          {% endif %}
+          {% if company.country %}<p>{{ company.country }}</p>{% endif %}
+          {% if company.ico %}<p>IČO: {{ company.ico }}</p>{% endif %}
+          {% if company.dic %}<p>DIČ: {{ company.dic }}</p>{% endif %}
+          {% if company.ic_dph %}<p>IČ DPH: {{ company.ic_dph }}</p>{% endif %}
+          {% if company.email %}<p class="mt-2">Email: {{ company.email }}</p>{% endif %}
+          {% if company.phone %}<p>Telefón: {{ company.phone }}</p>{% endif %}
+        </div>
+      </td>
+
+      <td>
+        <h2>Odberateľ</h2>
+        <div class="box">
+          <p><strong>{{ offer.customer_name or "-" }}</strong></p>
+          {% if offer.customer_email %}
+            <p>Email: {{ offer.customer_email }}</p>
+          {% endif %}
+          {% if not offer.customer_email %}
+            <p><em>Email nebol zadaný</em></p>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="box avoid-break">
+    <table class="dates">
+      <tr>
+        <td>
+          <small class="muted d-block">Dátum vytvorenia</small>
+          <strong>{{ offer.created_at.strftime('%d.%m.%Y') if offer.created_at else "-" }}</strong>
+        </td>
+        <td>
+          <small class="muted d-block">Status</small>
+          <strong>{{ offer.status or "draft" }}</strong>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <table class="items mt-4">
+    <thead>
+      <tr>
+        <th>Popis</th>
+        <th class="num">Množstvo</th>
+        <th>MJ</th>
+        <th class="num">Cena za MJ</th>
+        <th class="num">Celkom</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in offer.items or [] %}
+        {% set description = item.get('description', '') %}
+        {% set quantity = item.get('quantity', 0) %}
+        {% set unit = item.get('unit', '') %}
+        {% set price_per_item = item.get('price_per_item', 0) %}
+        <tr>
+          <td>{{ description }}</td>
+          <td class="num">{{ quantity }}</td>
+          <td>{{ unit or 'ks' }}</td>
+          <td class="num">{{ "%.2f"|format(price_per_item or 0) }} {{ offer.currency }}</td>
+          <td class="num">{{ "%.2f"|format((quantity or 0) * (price_per_item or 0)) }} {{ offer.currency }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <div class="row">
+      <div class="k">Medzisúčet</div>
+      <div class="v">{{ "%.2f"|format(offer.subtotal or 0) }} {{ offer.currency }}</div>
+    </div>
+
+    {% if offer.discount_total and offer.discount_total > 0 %}
+    <div class="row">
+      <div class="k">Zľava</div>
+      <div class="v">- {{ "%.2f"|format(offer.discount_total or 0) }} {{ offer.currency }}</div>
+    </div>
+    {% endif %}
+
+    <div class="row sum">
+      <div class="k">Celkom</div>
+      <div class="v">{{ "%.2f"|format(offer.total or 0) }} {{ offer.currency }}</div>
+    </div>
+  </div>
+
+  {% if offer.notes %}
+  <div class="mt-5">
+    <h3>Poznámka</h3>
+    <div class="box">
+      <p>{{ offer.notes }}</p>
+    </div>
+  </div>
+  {% endif %}
+
+  <table class="sigs">
+    <tr>
+      <td>
+        <div class="mb-2"><strong>Vyhotovil:</strong></div>
+        {% if stamp_data_uri %}
+          <img src="{{ stamp_data_uri }}" alt="Pečiatka" style="height: 80px" class="stamp"><br>
+        {% endif %}
+        <div class="line"></div>
+      </td>
+      <td>
+        <div class="mb-2"><strong>Schválil:</strong></div>
+        <div style="height: 80px;"></div>
+        <div class="line"></div>
+      </td>
+    </tr>
+  </table>
+
+  <p class="text-center mt-4" style="font-style: italic;">Ďakujeme za váš záujem.</p>
+
+</body>
+</html>

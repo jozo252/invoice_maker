@@ -7,6 +7,7 @@ from flask import (
     redirect,
     url_for,
     flash,
+    send_file,
 )
 from flask_login import login_required, current_user
 from ai import call_llm_extract_offer
@@ -15,6 +16,7 @@ from models import Lead, Offer, Invoice,Company
 import json
 from pydantic import ValidationError
 from pydantic_models import OfferAI, OfferAIItem
+from pdf_generator import render_invoice_to_pdf
 
 offers = Blueprint("offers", __name__, url_prefix="/offers")
 
@@ -109,9 +111,9 @@ def normalize_items_from_form():
             price_dec = Decimal("0.00")
 
         items.append({
-            "name": name,
+            "description": name,
             "quantity": float(qty_dec),
-            "unit_price": float(price_dec),
+            "price_per_item": float(price_dec),
         })
     print(f"items from func {items}")
     return items
@@ -430,6 +432,110 @@ def update_offer(offer_id):
     return redirect(url_for("offers.edit_offer", offer_id=offer.id))
 
 
+@offers.route("/<int:offer_id>/preview")
+@login_required
+def preview_offer(offer_id):
+    offer = Offer.query.filter_by(id=offer_id, user_id=current_user.id).first_or_404()
+    company = Company.query.filter_by(id=offer.company_id, user_id=current_user.id).first_or_404()
+
+    return render_template(
+        "offer_preview.html",
+        offer_data=offer,
+        company=company,
+        stamp_data_uri=None,
+    )
+@offers.route("/<int:offer_id>/download")
+@login_required
+def download_offer(offer_id):
+    offer = Offer.query.filter_by(id=offer_id, user_id=current_user.id).first_or_404()
+    company = Company.query.filter_by(id=offer.company_id, user_id=current_user.id).first_or_404()
+
+    context = {
+        "offer": offer,
+        "company": company,
+        "stamp_data_uri": None,
+    }
+    print(offer.items)
+    pdf_path = render_invoice_to_pdf("offer_pdf.html", context)
+    return send_file(pdf_path, as_attachment=True, download_name=f"{offer.id}.pdf")
+
+@offers.route("/save-from-preview", methods=["POST"])
+@login_required
+def save_offer_from_preview():
+    company_id = request.form.get("company_id", type=int)
+
+    if not company_id:
+        flash("Chýba firma.", "danger")
+        return redirect(url_for("offers.list_offers"))
+
+    # --- BASIC FIELDS ---
+    customer_name = (request.form.get("customer_name") or "").strip()
+    customer_email = (request.form.get("customer_email") or "").strip()
+    currency = request.form.get("currency") or "EUR"
+    notes = (request.form.get("notes") or "").strip()
+
+    # --- ITEMS ---
+    names = request.form.getlist("item_name[]")
+    qtys = request.form.getlist("item_qty[]")
+    prices = request.form.getlist("item_unit_price[]")
+
+    items = []
+    subtotal = Decimal("0.00")
+
+    for name, qty, price in zip(names, qtys, prices):
+        name = (name or "").strip()
+        if not name:
+            continue
+
+        try:
+            qty_val = Decimal(str(qty).replace(",", "."))
+        except:
+            qty_val = Decimal("0.00")
+
+        try:
+            price_val = Decimal(str(price).replace(",", "."))
+        except:
+            price_val = Decimal("0.00")
+
+        line_total = qty_val * price_val
+        subtotal += line_total
+
+        items.append({
+            "description": name,
+            "quantity": float(qty_val),
+            "price_per_item": float(price_val),
+        })
+
+    discount_total = Decimal("0.00")
+    total = subtotal - discount_total
+
+    # --- CREATE OFFER ---
+    offer = Offer(
+        user_id=current_user.id,
+        company_id=company_id,
+        customer_name=customer_name or None,
+        customer_email=customer_email or None,
+        currency=currency,
+        items=items,
+        notes=notes,
+        subtotal=subtotal,
+        discount_total=discount_total,
+        total=total,
+        status="draft",
+        created_at=datetime.utcnow(),
+    )
+
+    db.session.add(offer)
+    db.session.commit()
+
+    # --- ACTION LOGIC ---
+    action = request.form.get("action")
+
+    if action == "download":
+        return redirect(url_for("offers.download_offer", offer_id=offer.id))
+
+    flash("Ponuka bola uložená.", "success")
+    return redirect(url_for("offers.edit_offer", offer_id=offer.id))
 """@offers.route("/<int:offer_id>/convert-to-invoice", methods=["POST"])
 @login_required
 def convert_offer_to_invoice(offer_id):
