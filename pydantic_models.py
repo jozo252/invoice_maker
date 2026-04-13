@@ -115,3 +115,26 @@ class InvoiceModel(BaseModel):
             except Exception:
                 pass
         raise ValueError("Invalid date; expected ISO YYYY-MM-DD, or dd.mm.yyyy, or RFC-1123")
+
+
+
+
+class OfferAIItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    qty: Optional[float] = None
+    unit: Optional[str] = None
+    unit_price: Optional[float] = None
+
+
+class OfferAI(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    customer_name: Optional[str] = None
+    customer_email: Optional[str] = None
+    currency: Optional[str] = None
+    items: List[OfferAIItem] = Field(default_factory=list)
+    notes: Optional[str] = None
+    missing_fields: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)

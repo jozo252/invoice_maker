@@ -1,0 +1,32 @@
+{% extends base.html %}
+{% block content %}
+<h1>Leads</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>Meno</th>
+      <th>Email</th>
+      <th>Popis</th>
+      <th>Status</th>
+      <th>Vytvorené</th>
+      <th>Akcie</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for lead in leads %}
+    <tr>
+      <td>{{ lead.customer_name or "-" }}</td>
+      <td>{{ lead.customer_email or "-" }}</td>
+      <td>{{ (lead.description or "")[:80] }}</td>
+      <td>{{ lead.status }}</td>
+      <td>{{ lead.created_at.strftime("%d.%m.%Y %H:%M") if lead.created_at else "-" }}</td>
+      <td>
+        <a href="{{ url_for('leads.edit_lead', lead_id=lead.id) }}">Edit</a>
+        <a href="{{ url_for('offers.generate_offer_from_lead', lead_id=lead.id) }}">Vytvoriť ponuku</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

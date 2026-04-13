@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Ponuky{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1000px; margin: 40px auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <div>
+            <h1>Ponuky</h1>
+            <p>Prehľad vytvorených cenových ponúk.</p>
+        </div>
+        <div>
+            <a href="{{ url_for('offers.new_lead') }}">+ Nový dopyt</a>
+        </div>
+    </div>
+
+    {% if offers %}
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left; padding: 12px; border-bottom: 1px solid #ddd;">ID</th>
+                        <th style="text-align: left; padding: 12px; border-bottom: 1px solid #ddd;">Zákazník</th>
+                        <th style="text-align: left; padding: 12px; border-bottom: 1px solid #ddd;">Status</th>
+                        <th style="text-align: left; padding: 12px; border-bottom: 1px solid #ddd;">Suma</th>
+                        <th style="text-align: left; padding: 12px; border-bottom: 1px solid #ddd;">Vytvorené</th>
+                        <th style="text-align: left; padding: 12px; border-bottom: 1px solid #ddd;">Akcie</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for offer in offers %}
+                        <tr>
+                            <td style="padding: 12px; border-bottom: 1px solid #eee;">#{{ offer.id }}</td>
+                            <td style="padding: 12px; border-bottom: 1px solid #eee;">
+                                {{ offer.customer_name or "Bez mena" }}
+                            </td>
+                            <td style="padding: 12px; border-bottom: 1px solid #eee;">
+                                {{ offer.status }}
+                            </td>
+                            <td style="padding: 12px; border-bottom: 1px solid #eee;">
+                                {{ "%.2f"|format(offer.total or 0) }} €
+                            </td>
+                            <td style="padding: 12px; border-bottom: 1px solid #eee;">
+                                {{ offer.created_at.strftime("%d.%m.%Y %H:%M") if offer.created_at else "-" }}
+                            </td>
+                            <td style="padding: 12px; border-bottom: 1px solid #eee;">
+                                <a href="{{ url_for('offers.edit_offer', offer_id=offer.id) }}">Otvoriť</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div style="padding: 20px; border: 1px solid #ddd; margin-top: 20px;">
+            <p>Zatiaľ nemáš žiadne ponuky.</p>
+            <a href="{{ url_for('offers.new_lead') }}">Vytvoriť prvý dopyt</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

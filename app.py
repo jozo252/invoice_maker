@@ -70,7 +70,9 @@ def create_app():
 
     from routes import main as main_blueprint
     from aibot_routes import aibot as aibot_bp
+    from offers import offers
     app.register_blueprint(main_blueprint)
     app.register_blueprint(aibot_bp)
+    app.register_blueprint(offers)
 
     return app

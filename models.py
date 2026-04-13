@@ -68,6 +68,7 @@ class InvoiceStatus(enum.Enum):
     unpaid = "unpaid"
     paid = "paid"
     canceled = "canceled"
+    accepted="accepted"
 
 
 class PaymentMethod(enum.Enum):
@@ -154,3 +155,41 @@ class Company(db.Model):
         ic_dph = db.Column(db.String(20), nullable=True)  # Optional field for VAT ID if the 
         stamp_url=db.Column(db.String(256),nullable=True)
        
+
+
+#-------------------------------------------------------------------------------------------Offers--------------------------------
+
+class Lead(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, nullable=False)
+
+    name = db.Column(db.String(255))  # napr. "Rekonštrukcia bytu"
+    description = db.Column(db.Text)  # raw text od usera
+
+    customer_name = db.Column(db.String(255))
+    customer_email = db.Column(db.String(255))
+
+    status = db.Column(db.String(50), default="new")  # new / quoted / closed
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Offer(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, nullable=False)
+    lead_id = db.Column(db.Integer, db.ForeignKey("lead.id"))
+    company_id = db.Column(db.Integer, nullable=False)
+    currency = db.Column(db.String(10), nullable=False)
+
+    customer_name = db.Column(db.String(255))
+    customer_email = db.Column(db.String(255))
+
+    items = db.Column(db.JSON)  # [{name, qty, unit_price}]
+    notes = db.Column(db.Text)
+
+    subtotal = db.Column(db.Numeric(10, 2))
+    discount_total = db.Column(db.Numeric(10, 2), default=0)
+    total = db.Column(db.Numeric(10, 2))
+
+    status = db.Column(db.String(50), default="draft")  # draft / sent / accepted
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

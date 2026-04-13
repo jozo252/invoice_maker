@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}Upraviť ponuku{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1000px; margin: 40px auto;">
+    <h1>Upraviť ponuku #{{ offer.id }}</h1>
+
+    <form method="POST" action="{{ url_for('offers.update_offer', offer_id=offer.id) }}">
+        {{ form.hidden_tag() if form else "" }}
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+            <div>
+                <label for="customer_name"><strong>Meno zákazníka</strong></label><br>
+                <input
+                    type="text"
+                    id="customer_name"
+                    name="customer_name"
+                    value="{{ offer.customer_name or '' }}"
+                    style="width: 100%; padding: 10px; margin-top: 6px;"
+                >
+            </div>
+
+            <div>
+                <label for="customer_email"><strong>Email zákazníka</strong></label><br>
+                <input
+                    type="email"
+                    id="customer_email"
+                    name="customer_email"
+                    value="{{ offer.customer_email or '' }}"
+                    style="width: 100%; padding: 10px; margin-top: 6px;"
+                >
+            </div>
+        </div>
+
+        <div style="margin-bottom: 24px;">
+            <label for="notes"><strong>Poznámka / popis práce</strong></label><br>
+            <textarea
+                id="notes"
+                name="notes"
+                rows="4"
+                style="width: 100%; padding: 10px; margin-top: 6px;"
+            >{{ offer.notes or '' }}</textarea>
+        </div>
+
+        <h2>Položky</h2>
+
+        <div style="overflow-x: auto; margin-bottom: 20px;">
+            <table id="items-table" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left; padding: 10px; border-bottom: 1px solid #ddd;">Názov</th>
+                        <th style="text-align: left; padding: 10px; border-bottom: 1px solid #ddd;">Množstvo</th>
+                        <th style="text-align: left; padding: 10px; border-bottom: 1px solid #ddd;">Cena za jednotku</th>
+                        <th style="text-align: left; padding: 10px; border-bottom: 1px solid #ddd;">Spolu</th>
+                        <th style="text-align: left; padding: 10px; border-bottom: 1px solid #ddd;">Akcia</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set items = offer.items or [] %}
+                    {% for item in items %}
+                    <tr class="item-row">
+                        <td style="padding: 10px; border-bottom: 1px solid #eee;">
+                            <input
+                                type="text"
+                                name="item_name[]"
+                                value="{{ item.description if item.description is defined else item['name'] }}"
+                                style="width: 100%; padding: 8px;"
+                                required
+                            >
+                        </td>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee;">
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                name="item_quantity[]"
+                                value="{{ item.quantity if item.quantity is defined else item['quantity'] }}"
+                                class="qty-input"
+                                style="width: 100%; padding: 8px;"
+                                required
+                            >
+                        </td>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee;">
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                name="item_unit_price[]"
+                                value="{{ item.price_per_item if item.price_per_item is defined else item['unit_price'] }}"
+                                class="price-input"
+                                style="width: 100%; padding: 8px;"
+                                required
+                            >
+                        </td>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee;">
+                            <span class="line-total">0.00 €</span>
+                        </td>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee;">
+                            <button type="button" class="remove-row-btn">Zmazať</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <button type="button" id="add-row-btn" style="margin-bottom: 24px;">+ Pridať položku</button>
+
+        <div style="max-width: 350px; margin-left: auto; border: 1px solid #ddd; padding: 16px;">
+            <div style="margin-bottom: 12px;">
+                <label for="discount_total"><strong>Zľava</strong></label><br>
+                <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    id="discount_total"
+                    name="discount_total"
+                    value="{{ offer.discount_total or 0 }}"
+                    style="width: 100%; padding: 8px; margin-top: 6px;"
+                >
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span>Medzisúčet:</span>
+                <strong id="subtotal-display">0.00 €</strong>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span>Zľava:</span>
+                <strong id="discount-display">0.00 €</strong>
+            </div>
+
+            <hr>
+
+            <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+                <span>Spolu:</span>
+                <strong id="total-display">0.00 €</strong>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 24px; flex-wrap: wrap;">
+            <button type="submit">Uložiť ponuku</button>
+        </div>
+    </form>
+
+    <div style="margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap;">
+        <form method="POST" action="{{ url_for('offers.convert_offer_to_invoice', offer_id=offer.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit">Vytvoriť faktúru</button>
+        </form>
+
+        <a href="{{ url_for('offers.offers_list') }}">Späť na zoznam</a>
+    </div>
+</div>
+
+<script>
+    function recalculateTotals() {
+        const rows = document.querySelectorAll(".item-row");
+        let subtotal = 0;
+
+        rows.forEach(row => {
+            const qtyInput = row.querySelector(".qty-input");
+            const priceInput = row.querySelector(".price-input");
+            const lineTotalEl = row.querySelector(".line-total");
+
+            const qty = parseFloat(qtyInput.value) || 0;
+            const price = parseFloat(priceInput.value) || 0;
+            const lineTotal = qty * price;
+
+            subtotal += lineTotal;
+            lineTotalEl.textContent = lineTotal.toFixed(2) + " €";
+        });
+
+        const discountInput = document.getElementById("discount_total");
+        const discount = parseFloat(discountInput.value) || 0;
+        const total = Math.max(0, subtotal - discount);
+
+        document.getElementById("subtotal-display").textContent = subtotal.toFixed(2) + " €";
+        document.getElementById("discount-display").textContent = discount.toFixed(2) + " €";
+        document.getElementById("total-display").textContent = total.toFixed(2) + " €";
+    }
+
+    function attachRowEvents(row) {
+        const qtyInput = row.querySelector(".qty-input");
+        const priceInput = row.querySelector(".price-input");
+        const removeBtn = row.querySelector(".remove-row-btn");
+
+        if (qtyInput) qtyInput.addEventListener("input", recalculateTotals);
+        if (priceInput) priceInput.addEventListener("input", recalculateTotals);
+
+        if (removeBtn) {
+            removeBtn.addEventListener("click", function () {
+                row.remove();
+                recalculateTotals();
+            });
+        }
+    }
+
+    document.querySelectorAll(".item-row").forEach(attachRowEvents);
+
+    document.getElementById("discount_total").addEventListener("input", recalculateTotals);
+
+    document.getElementById("add-row-btn").addEventListener("click", function () {
+        const tbody = document.querySelector("#items-table tbody");
+        const tr = document.createElement("tr");
+        tr.classList.add("item-row");
+
+        tr.innerHTML = `
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">
+                <input type="text" name="item_name[]" style="width: 100%; padding: 8px;" required>
+            </td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">
+                <input type="number" step="0.01" min="0" name="item_quantity[]" class="qty-input" value="1" style="width: 100%; padding: 8px;" required>
+            </td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">
+                <input type="number" step="0.01" min="0" name="item_unit_price[]" class="price-input" value="0" style="width: 100%; padding: 8px;" required>
+            </td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">
+                <span class="line-total">0.00 €</span>
+            </td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">
+                <button type="button" class="remove-row-btn">Zmazať</button>
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+        attachRowEvents(tr);
+        recalculateTotals();
+    });
+
+    recalculateTotals();
+</script>
+{% endblock %}

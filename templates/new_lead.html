@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Nový dopyt{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 800px; margin: 40px auto;">
+    <h1>Nový dopyt</h1>
+    <p>Sem vlož opis zákazky. Z toho sa vytvorí návrh cenovej ponuky.</p>
+
+    <form method="POST" action="{{ url_for('offers.create_lead') }}">
+         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {{ form.hidden_tag() if form else "" }}
+
+        <div style="margin-bottom: 16px;">
+            <label for="name"><strong>Názov dopytu</strong></label><br>
+            <input
+                type="text"
+                id="name"
+                name="name"
+                placeholder="Napr. Rekonštrukcia bytu - zásuvky"
+                value="{{ request.form.get('name', '') }}"
+                style="width: 100%; padding: 10px; margin-top: 6px;"
+            >
+        </div>
+
+        <div style="margin-bottom: 16px;">
+            <label for="customer_name"><strong>Meno zákazníka</strong></label><br>
+            <input
+                type="text"
+                id="customer_name"
+                name="customer_name"
+                placeholder="Napr. Jozef Mráz"
+                value="{{ request.form.get('customer_name', '') }}"
+                style="width: 100%; padding: 10px; margin-top: 6px;"
+            >
+        </div>
+
+        <div style="margin-bottom: 16px;">
+            <label for="customer_email"><strong>Email zákazníka</strong></label><br>
+            <input
+                type="email"
+                id="customer_email"
+                name="customer_email"
+                placeholder="Napr. jozef@email.sk"
+                value="{{ request.form.get('customer_email', '') }}"
+                style="width: 100%; padding: 10px; margin-top: 6px;"
+            >
+        </div>
+
+        <div style="margin-bottom: 16px;">
+            <label for="description"><strong>Popis dopytu</strong></label><br>
+            <textarea
+                id="description"
+                name="description"
+                rows="10"
+                placeholder="Napr. Robil som 3 dni elektroinštaláciu, 150 € na deň, materiál cca 200 €..."
+                style="width: 100%; padding: 10px; margin-top: 6px;"
+                required
+            >{{ request.form.get('description', '') }}</textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button type="submit">Vytvoriť dopyt</button>
+            <a href="{{ url_for('offers.offers_list') }}">Späť na ponuky</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
