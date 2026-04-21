@@ -1,3 +1,5 @@
+import uuid
+
 from flask import Blueprint, render_template, request, redirect, url_for,session, flash, send_file, abort, jsonify, current_app,send_from_directory
 from models import Client, Invoice, Company, InvoiceItem, User, InvoiceStatus, PaymentMethod, InvoiceCounter
 from datetime import datetime, timezone
@@ -665,70 +667,70 @@ def delete_client(client_id):
     db.session.commit()
     return redirect(url_for('main.list_clients'))
 
-@main.route("/my_company", methods=['GET', 'POST'])
+@main.route("/my_company", methods=["GET", "POST"])
 @login_required
 def my_company():
     company = Company.query.filter_by(user_id=current_user.id).first()
 
-    if request.method == 'POST':
+    if request.method == "POST":
         if not company:
             company = Company(user_id=current_user.id)
             db.session.add(company)
 
-        company.name = request.form['name']
-        company.street = request.form['street']
-        company.city = request.form['city']
-        company.zip_code = request.form['zip_code']
-        company.country = request.form['country']
-        company.ico = request.form['ico']
-        company.dic = request.form['dic']
-        company.email = request.form['email']
-        company.phone = request.form['phone']
-        company.iban = request.form['iban']
-        company.bic = request.form['bic']
-        company.is_vat_payer = request.form['is_vat_payer'] == 'True'
-        company.ic_dph = request.form.get('ic_dph', '').strip() if company.is_vat_payer else None
-#-----------------------stamp
-        file=request.files.get('stamp')
+        company.name = request.form["name"]
+        company.street = request.form["street"]
+        company.city = request.form["city"]
+        company.zip_code = request.form["zip_code"]
+        company.country = request.form["country"]
+        company.ico = request.form["ico"]
+        company.dic = request.form["dic"]
+        company.email = request.form["email"]
+        company.phone = request.form["phone"]
+        company.iban = request.form["iban"]
+        company.bic = request.form["bic"]
+        company.is_vat_payer = request.form["is_vat_payer"] == "True"
+        company.ic_dph = request.form.get("ic_dph", "").strip() if company.is_vat_payer else None
+
+        file = request.files.get("stamp")
 
         if file and file.filename:
-            if '.' in file.filename:
-                ext = file.filename.rsplit('.', 1)[1].lower()
-            else:
-                ext = ''
-            ext=file.filename.rsplit('.',1)[1].lower()
-            if ext not in current_app.config['ALLOWED_STAMP_EXT']:
-                flash('Nepovolený formát obrázka (použi PNG/JPG/WEBP).')
+            current_app.logger.warning(f"STAMP upload received: {file.filename}")
+
+            if "." not in file.filename:
+                flash("Súbor nemá príponu.", "danger")
                 return redirect(request.url)
-            
-            static_upload_dir = os.path.join(current_app.static_folder, 'uploads')
+
+            ext = file.filename.rsplit(".", 1)[1].lower()
+
+            if ext not in current_app.config["ALLOWED_STAMP_EXT"]:
+                flash("Nepovolený formát obrázka (použi PNG/JPG/WEBP).", "danger")
+                return redirect(request.url)
+
+            static_upload_dir = os.path.join(current_app.static_folder, "uploads")
             os.makedirs(static_upload_dir, exist_ok=True)
 
-            filename = f"stamp_{current_user.id}.png"
+            filename = f"stamp_{current_user.id}_{uuid.uuid4().hex}.png"
             save_path = os.path.join(static_upload_dir, filename)
 
             try:
-                # 3) Načítanie obrázka + normalizácia do PNG (transparentné pozadie, menší rozmer)
-                img = Image.open(file.stream).convert('RGBA')
+                img = Image.open(file.stream).convert("RGBA")
                 img.thumbnail((800, 800))
-                img.save(save_path, format='PNG', optimize=True)
+                img.save(save_path, format="PNG", optimize=True)
 
-            except Exception as e:
+                current_app.logger.warning(f"Stamp saved to: {save_path}")
+
+            except Exception:
                 current_app.logger.exception("Stamp upload failed")
-                flash('Súbor neviem spracovať ako obrázok.', 'danger')
+                flash("Súbor neviem spracovať ako obrázok.", "danger")
                 return redirect(request.url)
-            company.stamp_url = url_for('static', filename=f'uploads/{filename}', _external=False)
 
+            company.stamp_url = url_for("static", filename=f"uploads/{filename}")
 
         db.session.commit()
         flash("Údaje o firme boli úspešne uložené.", "success")
-        return redirect(url_for('main.my_company'))
+        return redirect(url_for("main.my_company"))
 
-    return render_template('my_company.html', company=company)
-
-@main.route('/uploads/<path:filename>')
-def uploaded_file(filename):
-    return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
+    return render_template("my_company.html", company=company)
 
 
 

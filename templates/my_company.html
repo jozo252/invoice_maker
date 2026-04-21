@@ -245,43 +245,6 @@
 </form>
 
 <script>
-(function () {
-  'use strict';
 
-  const forms = document.querySelectorAll('.needs-validation');
-  Array.prototype.slice.call(forms).forEach(function (form) {
-    form.addEventListener('submit', function (event) {
-      if (!form.checkValidity()) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-      form.classList.add('was-validated');
-    }, false);
-  });
-
-  const selectVat = document.getElementById('is_vat_payer');
-  const icDph = document.getElementById('ic_dph');
-  const wrap = document.getElementById('ic-dph-wrap');
-
-  function refreshVat() {
-    const isVat = selectVat && selectVat.value === 'True';
-
-    if (icDph) {
-      icDph.required = isVat;
-      if (!isVat) {
-        icDph.value = icDph.value.trim();
-      }
-    }
-
-    if (wrap) {
-      wrap.style.display = isVat ? '' : 'none';
-    }
-  }
-
-  if (selectVat) {
-    selectVat.addEventListener('change', refreshVat);
-    refreshVat();
-  }
-})();
 </script>
 {% endblock %}
