@@ -81,7 +81,13 @@ def home():
 @main.route('/account')
 @login_required
 def account():
-    return render_template('account.html',user=current_user)
+    company = Company.query.filter_by(user_id=current_user.id).first()
+
+    return render_template(
+        "account.html",
+        user=current_user,
+        company=company
+    )
 
 
 @main.route('/pricing')
@@ -265,11 +271,21 @@ def dashboard():
                 .order_by(Invoice.date.desc(), Invoice.id.desc())
                 .limit(10)             # <-- max 10
                 .all())
+    onboarding_step = None
+    has_company = Company.query.filter_by(user_id=current_user.id).first() is not None
+    has_clients = Client.query.filter_by(user_id=current_user.id).first() is not None
+    has_invoices = Invoice.query.filter_by(user_id=current_user.id).first() is not None
+    onboarding = {
+    "company_done": has_company,
+    "client_done": has_clients,
+    "invoice_done": has_invoices,
+}
 
     return render_template('dashboard.html',
                            invoices=invoices,
                            q=q,
-                           InvoiceStatus=InvoiceStatus)
+                           InvoiceStatus=InvoiceStatus,
+                           onboarding=onboarding)
 
 
 @main.route('/status-by-client')
@@ -361,7 +377,7 @@ def download_invoice(invoice_id):
             amount_eur=amount_for_qr,
             text=f"Invoice {invoice.invoice_number}"
         )
-
+    stamp_data_uri = None
     if invoice.company:
         stamp_abs = os.path.join(
             current_app.static_folder, 'uploads', f'stamp_{invoice.company.user_id}.png'
@@ -372,10 +388,14 @@ def download_invoice(invoice_id):
             with open(stamp_abs, "rb") as f:
                 b64 = base64.b64encode(f.read()).decode("ascii")
             stamp_data_uri = f"data:{mime};base64,{b64}"
+    vat_amount = (amount_due - base).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if getattr(invoice.company, "is_vat_payer", False) else Decimal("0.00")
+    grand_total = invoice.total_cost
     context = {
         "invoice": invoice,
         "qr_svg": qr_svg,   
-        "stamp_data_uri": stamp_data_uri
+        "stamp_data_uri": stamp_data_uri,
+        "vat_amount": vat_amount,
+        "grand_total": grand_total
 
     }
 
@@ -416,7 +436,7 @@ def send_invoice_email(invoice,attachment_file=None):
             amount_eur=amount_for_qr,
             text=f"Invoice {invoice.invoice_number}"
         )
-
+    stamp_data_uri = None
     if invoice.company:
         stamp_abs = os.path.join(
             current_app.static_folder, 'uploads', f'stamp_{invoice.company.user_id}.png'
@@ -428,12 +448,16 @@ def send_invoice_email(invoice,attachment_file=None):
                 b64 = base64.b64encode(f.read()).decode("ascii")
             stamp_data_uri = f"data:{mime};base64,{b64}"
     # Kontext pre HTML renderovanie PDF
+    grand_total = invoice.total_cost
+    vat_amount = (amount_due - base).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if getattr(invoice.company, "is_vat_payer", False) else Decimal("0.00")
     context = {
         "invoice": invoice,
         "client": invoice.client,
         "company": invoice.company,
         "qr_svg": qr_svg,
-        "stamp_data_uri": stamp_data_uri
+        "stamp_data_uri": stamp_data_uri,
+        "grand_total": grand_total,
+        "vat_amount": vat_amount
     }
 
     # Vytvorenie dočasného PDF súboru
@@ -530,10 +554,23 @@ def create_invoice_from_ai_data(data):
     if not company:
         return None
 
-    # Spočítaj total_cost
-    total_cost = sum(
-        item["quantity"] * item["price_per_item"] for item in invoice_data["items"]
-    )
+    subtotal = Decimal("0.00")
+    for item in invoice_data["items"]:
+        qty = Decimal(str(item.get("quantity", 0)))
+        price = Decimal(str(item.get("price_per_item", 0)))
+        subtotal += qty * price
+
+    try:
+        discount_total = Decimal(str(invoice_data.get("discount_total", 0) or 0))
+    except Exception:
+        discount_total = Decimal("0.00")
+
+    if discount_total < Decimal("0.00"):
+        discount_total = Decimal("0.00")
+
+    total_cost = subtotal - discount_total
+    if total_cost < Decimal("0.00"):
+        total_cost = Decimal("0.00")
 
     invoice = Invoice(
         invoice_number=generate_invoice_number(),
@@ -541,28 +578,30 @@ def create_invoice_from_ai_data(data):
         due_date=datetime.strptime(invoice_data["due_date"], "%Y-%m-%d").date(),
         currency=invoice_data["currency"],
         total_cost=total_cost,
-        vat_rate=0.0,
+        discount_total=discount_total,
+        vat_rate=Decimal(str(invoice_data.get("vat_rate", 0) or 0)),
         client_id=client.id,
         company_id=company.id,
         user_id=current_user.id,
         created_at=datetime.now(timezone.utc)
     )
 
-    # Pridaj položky do faktúry
     for item in invoice_data["items"]:
+        qty = Decimal(str(item.get("quantity", 0)))
+        price = Decimal(str(item.get("price_per_item", 0)))
+        line_total = qty * price
+
         invoice.items.append(InvoiceItem(
             description=item["description"],
-            quantity=item["quantity"],
-            unit=item["unit"],
-            price_per_item=item["price_per_item"],
-            total_cost=item["quantity"] * item["price_per_item"]
+            quantity=qty,
+            unit=item.get("unit") or "ks",
+            price_per_item=price,
+            total_cost=line_total
         ))
 
     db.session.add(invoice)
-    #send_invoice_email(invoice, client, company)
     db.session.commit()
     return invoice
-
 
 
 @main.route('/clients')
@@ -830,7 +869,9 @@ def add_invoice():
         allowed = {'bank_transfer','cash','card','other'}
         if pm_raw not in allowed:
             pm_raw = 'bank_transfer'
-
+        discount_total = Decimal(str(request.form.get('discount_total') or '0')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        if discount_total < Decimal('0.00'):
+            discount_total = Decimal('0.00')
         invoice = Invoice(
             invoice_number=invoice_number,
             variable_symbol=variable_symbol,
@@ -838,7 +879,8 @@ def add_invoice():
             due_date=due_obj,
             currency=request.form['currency'],
             vat_rate=vat_rate,
-            total_cost=float(total_cost),  # čistá suma podľa položiek (bez DPH, ak to tak máš)
+            total_cost=float(total_cost-discount_total),  # čistá suma podľa položiek (bez DPH, ak to tak máš)
+            discount_total=float(discount_total),
             user_id=current_user.id,
             client_id=client_id,
             company_id=company_id,
@@ -1092,7 +1134,7 @@ def view_invoice(invoice_id):
 @main.route('/invoices')
 @login_required
 def list_invoices():
-    invoices = Invoice.query.filter_by(user_id=current_user.id).all()
+    invoices = Invoice.query.filter_by(user_id=current_user.id).order_by(Invoice.created_at.desc()).all() # nejdřív nejnovější
     return render_template(
         'invoices.html',
         invoices=invoices,

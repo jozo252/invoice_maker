@@ -4,222 +4,379 @@
   <meta charset="UTF-8">
   <title>Faktúra {{ invoice.invoice_number }}</title>
   <style>
-    /* Základ */
-    html, body { margin: 0; padding: 0; }
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", sans-serif;
       font-size: 13px;
       color: #222;
       line-height: 1.35;
-      padding: 28px 32px; /* bezpečný okraj pre PDF */
-      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      padding: 28px 32px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
-    h1, h2, h3 { margin: 0 0 6px 0; }
+
+    h1, h2, h3 {
+      margin: 0 0 6px 0;
+    }
+
     h1 { font-size: 20px; }
     h2 { font-size: 16px; }
     h3 { font-size: 14px; }
-    p { margin: 0 0 4px 0; }
-    small { color: #666; }
 
-    /* Utility */
-    .mb-2{ margin-bottom: 8px; } .mb-3{ margin-bottom: 12px; } .mb-4{ margin-bottom: 16px; }
-    .mt-2{ margin-top: 8px; } .mt-3{ margin-top: 12px; } .mt-4{ margin-top: 16px; } .mt-5{ margin-top: 24px; }
-    .text-right{ text-align: right; } .text-center{ text-align: center; }
-    .muted{ color:#666; }
-    .nowrap{ white-space: nowrap; }
+    p {
+      margin: 0 0 4px 0;
+    }
 
-    /* Dvojstĺpcové bloky (bez závislosti na frameworku) */
-    .split { width: 100%; border-collapse: separate; border-spacing: 0 0; }
-    .split td { vertical-align: top; width: 50%; padding: 0; }
-    .box { border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; }
+    small {
+      color: #666;
+    }
 
-    /* Tabuľky položiek */
-    table.items { width: 100%; border-collapse: collapse; margin-top: 10px; font-variant-numeric: tabular-nums; }
-    .items th, .items td { border: 1px solid #d2d2d2; padding: 8px; }
-    .items thead th { background: #f6f7f9; text-align: left; }
+    .mb-1 { margin-bottom: 4px; }
+    .mb-2 { margin-bottom: 8px; }
+    .mb-3 { margin-bottom: 12px; }
+    .mb-4 { margin-bottom: 16px; }
+
+    .mt-1 { margin-top: 4px; }
+    .mt-2 { margin-top: 8px; }
+    .mt-3 { margin-top: 12px; }
+    .mt-4 { margin-top: 16px; }
+    .mt-5 { margin-top: 24px; }
+
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .muted { color: #666; }
+    .nowrap { white-space: nowrap; }
     .num { text-align: right; }
-
-    /* Súhrn */
-    .totals { width: 100%; margin-top: 16px; font-variant-numeric: tabular-nums; }
-    .totals .row { display: table; width: 100%; }
-    .totals .row > div { display: table-cell; }
-    .totals .k { text-align: left; }
-    .totals .v { text-align: right; white-space: nowrap; }
-    .totals .sum { font-weight: 600; font-size: 14px; border-top: 1px solid #ccc; padding-top: 6px; }
-
-    /* Podpisy */
-    .sigs { width: 100%; margin-top: 32px; }
-    .sigs td { width: 50%; text-align: center; vertical-align: bottom; }
-    .stamp { max-height: 80px; object-fit: contain; }
-    .line { margin: 8px auto 0; height: 1px; background: #999; width: 160px; }
-
-    /* QR blok je samostatný aby sa nerozbil zalomením */
-    .qr-wrap { page-break-inside: avoid; }
-
-    /* Zamedzenie lámania v riadku s cenami */
-    .currency { white-space: nowrap; }
-
-    /* Page-break hints pre viacstranové faktúry */
     .avoid-break { page-break-inside: avoid; }
 
-    /* Flex utilities (Bootstrap-free) */
-.flex { display: flex; }
-.justify-between { justify-content: space-between; }
-.align-start { align-items: flex-start; }
-.flex-wrap { flex-wrap: wrap; }
-.text-end { text-align: right; }
+    .split {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
 
-/* Dates row: one line, centered, no wrapping */
-.dates-row {
-  display: flex;
-  justify-content: center;
-  flex-wrap: nowrap;
-}
-.dates-row > div {
-  padding: 0 16px;        /* spacing between the three blocks */
-  white-space: nowrap;    /* prevent breaking inside labels */
-  text-align: center;
-}
-.dates {
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: collapse;
-  margin-top: 10px;
-}
-.dates td {
-  width: 33.33%;
-  text-align: center;
-  padding: 0 16px;
-  white-space: nowrap;    /* no word wrapping */
-  word-break: normal;     /* don't split slovak words */
-}
-.payment-row {
-  display: table;
-  width: 100%;
-  table-layout: fixed;
-}
+    .split td {
+      vertical-align: top;
+      width: 50%;
+      padding: 0;
+    }
 
-.payment-cell {
-  display: table-cell;
-  vertical-align: top;
-  width: 50%;
-}
+    .split td:first-child {
+      padding-right: 10px;
+    }
 
-.payment-cell.right {
-  text-align: right;
-}
+    .split td:last-child {
+      padding-left: 10px;
+    }
+
+    .box {
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 10px 12px;
+      min-height: 150px;
+    }
+
+    table.items {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .items th,
+    .items td {
+      border: 1px solid #d2d2d2;
+      padding: 8px;
+    }
+
+    .items thead th {
+      background: #f6f7f9;
+      text-align: left;
+    }
+
+    .items thead th.num {
+      text-align: right;
+    }
+
+    .payment-row {
+      display: table;
+      width: 100%;
+      table-layout: fixed;
+    }
+
+    .payment-cell {
+      display: table-cell;
+      vertical-align: top;
+      width: 50%;
+    }
+
+    .payment-cell.right {
+      text-align: right;
+    }
+
+    .dates {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    .dates td {
+      width: 33.33%;
+      text-align: center;
+      padding: 0 16px;
+      white-space: nowrap;
+      word-break: normal;
+      vertical-align: top;
+    }
+
+    .totals {
+      width: 100%;
+      margin-top: 16px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .totals-box {
+      width: 320px;
+      margin-left: auto;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 12px 14px;
+    }
+
+    .totals .row {
+      display: table;
+      width: 100%;
+      margin-bottom: 6px;
+    }
+
+    .totals .row > div {
+      display: table-cell;
+    }
+
+    .totals .k {
+      text-align: left;
+    }
+
+    .totals .v {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .totals .sum {
+      font-weight: 700;
+      font-size: 14px;
+      border-top: 1px solid #ccc;
+      padding-top: 8px;
+      margin-top: 8px;
+    }
+
+    .sigs {
+      width: 100%;
+      margin-top: 32px;
+    }
+
+    .sigs td {
+      width: 50%;
+      text-align: center;
+      vertical-align: bottom;
+    }
+
+    .stamp {
+      max-height: 80px;
+      object-fit: contain;
+    }
+
+    .line {
+      margin: 8px auto 0;
+      height: 1px;
+      background: #999;
+      width: 160px;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #ddd;
+      margin: 12px 0;
+    }
   </style>
 </head>
 <body>
 
-  <!-- Hlavička -->
-  <h1 class="mb-4">Faktúra č.: {{ invoice.invoice_number }}</h1>
+  {% set payment_value = invoice.payment_method.value if invoice.payment_method and invoice.payment_method.value is defined else invoice.payment_method %}
 
-  <!-- Dodávateľ / Odberateľ -->
+  <h1 class="mb-4">Faktúra č. {{ invoice.invoice_number }}</h1>
+
   <table class="split mb-3 avoid-break">
     <tr>
       <td>
         <h2>Dodávateľ</h2>
         <div class="box">
           <p><strong>{{ invoice.company.name }}</strong></p>
-          <p>{{ invoice.company.street }}</p>
-          <p>{{ invoice.company.zip_code }} {{ invoice.company.city }}</p>
-          <p>{{ invoice.company.country }}</p>
-          <p>IČO: {{ invoice.company.ico }}</p>
-          <p>DIČ: {{ invoice.company.dic }}</p>
+
+          {% if invoice.company.street %}
+            <p>{{ invoice.company.street }}</p>
+          {% endif %}
+
+          {% if invoice.company.zip_code or invoice.company.city %}
+            <p>{{ invoice.company.zip_code or '' }} {{ invoice.company.city or '' }}</p>
+          {% endif %}
+
+          {% if invoice.company.country %}
+            <p>{{ invoice.company.country }}</p>
+          {% endif %}
+
+          {% if invoice.company.ico %}
+            <p>IČO: {{ invoice.company.ico }}</p>
+          {% endif %}
+
+          {% if invoice.company.dic %}
+            <p>DIČ: {{ invoice.company.dic }}</p>
+          {% endif %}
+
           {% if invoice.company.is_vat_payer and invoice.company.ic_dph %}
             <p>IČ DPH: {{ invoice.company.ic_dph }}</p>
+          {% elif invoice.company.is_vat_payer %}
+            <p>IČ DPH: —</p>
           {% else %}
             <p><em>Dodávateľ nie je platiteľom DPH</em></p>
           {% endif %}
-          {% if invoice.company.email %}<p class="mt-2">Email: {{ invoice.company.email }}</p>{% endif %}
-          {% if invoice.company.phone %}<p>Telefón: {{ invoice.company.phone }}</p>{% endif %}
-          {% if invoice.company.iban %}<p>IBAN: <span class="nowrap">{{ invoice.company.iban }}</span></p>{% endif %}
-          {% if invoice.company.bic %}<p>BIC/SWIFT: {{ invoice.company.bic }}</p>{% endif %}
+
+          {% if invoice.company.email %}
+            <p class="mt-2">Email: {{ invoice.company.email }}</p>
+          {% endif %}
+
+          {% if invoice.company.phone %}
+            <p>Telefón: {{ invoice.company.phone }}</p>
+          {% endif %}
+
+          {% if invoice.company.iban %}
+            <p>IBAN: <span class="nowrap">{{ invoice.company.iban }}</span></p>
+          {% endif %}
+
+          {% if invoice.company.bic %}
+            <p>BIC/SWIFT: {{ invoice.company.bic }}</p>
+          {% endif %}
         </div>
       </td>
+
       <td>
         <h2>Odberateľ</h2>
         <div class="box">
           <p><strong>{{ invoice.client.name }}</strong></p>
-          <p>{{ invoice.client.street }}</p>
-          <p>{{ invoice.client.zip_code }} {{ invoice.client.city }}</p>
-          <p>{{ invoice.client.country }}</p>
-          <p>IČO: {{ invoice.client.ico }}</p>
-          <p>DIČ: {{ invoice.client.dic }}</p>
+
+          {% if invoice.client.street %}
+            <p>{{ invoice.client.street }}</p>
+          {% endif %}
+
+          {% if invoice.client.zip_code or invoice.client.city %}
+            <p>{{ invoice.client.zip_code or '' }} {{ invoice.client.city or '' }}</p>
+          {% endif %}
+
+          {% if invoice.client.country %}
+            <p>{{ invoice.client.country }}</p>
+          {% endif %}
+
+          {% if invoice.client.ico %}
+            <p>IČO: {{ invoice.client.ico }}</p>
+          {% endif %}
+
+          {% if invoice.client.dic %}
+            <p>DIČ: {{ invoice.client.dic }}</p>
+          {% endif %}
+
           {% if invoice.client.ic_dph %}
             <p>IČ DPH: {{ invoice.client.ic_dph }}</p>
-          {% else %}
-            <p><em>Odberateľ nie je platiteľom DPH</em></p>
           {% endif %}
-          {% if invoice.client.email %}<p class="mt-2">Email: {{ invoice.client.email }}</p>{% endif %}
-          {% if invoice.client.phone %}<p>Telefón: {{ invoice.client.phone }}</p>{% endif %}
-          {% if invoice.client.iban %}<p>IBAN: <span class="nowrap">{{ invoice.client.iban }}</span></p>{% endif %}
-          {% if invoice.client.bic %}<p>BIC/SWIFT: {{ invoice.client.bic }}</p>{% endif %}
+
+          {% if invoice.client.email %}
+            <p class="mt-2">Email: {{ invoice.client.email }}</p>
+          {% endif %}
+
+          {% if invoice.client.phone %}
+            <p>Telefón: {{ invoice.client.phone }}</p>
+          {% endif %}
+
+          {% if invoice.client.iban %}
+            <p>IBAN: <span class="nowrap">{{ invoice.client.iban }}</span></p>
+          {% endif %}
+
+          {% if invoice.client.bic %}
+            <p>BIC/SWIFT: {{ invoice.client.bic }}</p>
+          {% endif %}
         </div>
       </td>
     </tr>
   </table>
 
-<div class="box avoid-break">
-  {% if invoice.payment_method.value == 'bank_transfer' or invoice.payment_method == 'bank_transfer' %}
-  <p class="mb-3"><strong>Spôsob úhrady:</strong> Bankový prevod</p>
+  <div class="box avoid-break">
+    {% if payment_value == 'bank_transfer' %}
+      <p class="mb-3"><strong>Spôsob úhrady:</strong> Bankový prevod</p>
 
-  <div class="payment-row">
-    <div class="payment-cell">
-      {% if invoice.company.iban %}
-        <p class="mb-1"><strong>IBAN:</strong> <span class="nowrap">{{ invoice.company.iban }}</span></p>
-      {% endif %}
-      {% if invoice.company.bic %}
-        <p class="mb-0"><strong>BIC:</strong> {{ invoice.company.bic }}</p>
-      {% endif %}
-      {% if invoice.variable_symbol %}
-        <p class="mb-0"><strong>VS:</strong> {{ invoice.variable_symbol }}</p>
-      {% endif %}
-      
-    </div>
+      <div class="payment-row">
+        <div class="payment-cell">
+          {% if invoice.company.iban %}
+            <p class="mb-1"><strong>IBAN:</strong> <span class="nowrap">{{ invoice.company.iban }}</span></p>
+          {% endif %}
 
-    {% if qr_svg %}
-      <div class="payment-cell right">
-        <div style="display: inline-block; width: 170px;">{{ qr_svg|safe }}</div>
-        <div class="muted mt-1" style="font-size: 11px;">
-          IBAN: {{ invoice.company.iban }} • VS: {{ invoice.variable_symbol }}
+          {% if invoice.company.bic %}
+            <p class="mb-1"><strong>BIC:</strong> {{ invoice.company.bic }}</p>
+          {% endif %}
+
+          {% if invoice.variable_symbol %}
+            <p class="mb-0"><strong>VS:</strong> {{ invoice.variable_symbol }}</p>
+          {% endif %}
         </div>
+
+        {% if qr_svg %}
+          <div class="payment-cell right">
+            <div style="display:inline-block; width:170px;">{{ qr_svg|safe }}</div>
+            <div class="muted mt-1" style="font-size: 11px;">
+              {% if invoice.company.iban %}
+                IBAN: <span class="nowrap">{{ invoice.company.iban }}</span>
+              {% endif %}
+              {% if invoice.variable_symbol %}
+                • VS: {{ invoice.variable_symbol }}
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
       </div>
+
+    {% elif payment_value == 'cash' %}
+      <p><strong>Spôsob úhrady:</strong> Hotovosť</p>
+
+    {% elif payment_value == 'card' %}
+      <p><strong>Spôsob úhrady:</strong> Platobná karta</p>
+
+    {% else %}
+      <p><strong>Spôsob úhrady:</strong> {{ payment_value or '—' }}</p>
     {% endif %}
+
+    <hr>
+
+    <table class="dates">
+      <tr>
+        <td>
+          <small class="muted">Dátum vystavenia</small><br>
+          <strong>{{ invoice.date.strftime('%d.%m.%Y') }}</strong>
+        </td>
+        <td>
+          <small class="muted">Dátum dodania</small><br>
+          <strong>{{ invoice.date.strftime('%d.%m.%Y') }}</strong>
+        </td>
+        <td>
+          <small class="muted">Dátum splatnosti</small><br>
+          <strong>{{ invoice.due_date.strftime('%d.%m.%Y') }}</strong>
+        </td>
+      </tr>
+    </table>
   </div>
 
-{% elif invoice.payment_method.value == 'cash' or invoice.payment_method == 'PaymentMethod.cash' or invoice.payment_method == 'cash' %}
-  <p><strong>Spôsob úhrady:</strong> Hotovosť</p>
-{% elif invoice.payment_method.value == 'card' or invoice.payment_method == 'PaymentMethod.card' or invoice.payment_method == 'card' %}
-  <p><strong>Spôsob úhrady:</strong> Platobná karta</p>
-{% else %}
-  <p><strong>Spôsob úhrady:</strong> {{ invoice.payment_method }}</p>
-{% endif %}
-
-<hr>
-  <!-- Dátumy: always one row, centered, no wrap -->
-  <table class="dates">
-  <tr>
-    <td>
-      <small class="muted d-block">Dátum vystavenia:  </small>
-      <strong>{{ invoice.date.strftime('%d.%m.%Y') }}</strong>
-    </td>
-    <td>
-      <small class="muted d-block">Dátum dodania: </small>
-      <strong>{{ invoice.date.strftime('%d.%m.%Y') }}</strong>
-    </td>
-    <td>
-      <small class="muted d-block">Splatnosť faktúry: </small>
-      <strong>{{ invoice.due_date.strftime('%d.%m.%Y') }}</strong>
-    </td>
-  </tr>
-</table>
-</div>
-
-
-
-  <!-- Položky -->
   <table class="items mt-4">
     <thead>
       <tr>
@@ -243,32 +400,40 @@
     </tbody>
   </table>
 
-  <!-- Súhrn -->
   <div class="totals">
-    {% if invoice.company.is_vat_payer %}
-      {% set vat_amount = (invoice.total_cost * invoice.vat_rate / 100) %}
-      {% set total_with_vat = (invoice.total_cost + vat_amount) %}
-      <div class="row"><div class="k">Základ DPH</div><div class="v">{{ "%.2f"|format(invoice.total_cost) }} {{ invoice.currency }}</div></div>
-      <div class="row"><div class="k">Sadzba DPH</div><div class="v">{{ "%.2f"|format(invoice.vat_rate) }}%</div></div>
-      <div class="row"><div class="k">DPH</div><div class="v">{{ "%.2f"|format(vat_amount) }} {{ invoice.currency }}</div></div>
-      <div class="row sum"><div class="k">Spolu na úhradu</div><div class="v">{{ "%.2f"|format(total_with_vat) }} {{ invoice.currency }}</div></div>
-    {% else %}
-      <div class="row sum"><div class="k">Celkom</div><div class="v">{{ "%.2f"|format(invoice.total_cost) }} {{ invoice.currency }}</div></div>
-    {% endif %}
+    <div class="totals-box">
+      {% if invoice.discount_total and invoice.discount_total > 0 %}
+        <div class="row">
+          <div class="k">Zľava</div>
+          <div class="v">-{{ "%.2f"|format(invoice.discount_total) }} {{ invoice.currency }}</div>
+        </div>
+      {% endif %}
+
+      {% if invoice.company.is_vat_payer %}
+        <div class="row">
+          <div class="k">DPH ({{ "%.2f"|format(invoice.vat_rate or 0) }} %)</div>
+          <div class="v">{{ "%.2f"|format(vat_amount or 0) }} {{ invoice.currency }}</div>
+        </div>
+      {% endif %}
+
+      <div class="row sum">
+        <div class="k">Spolu na úhradu</div>
+        <div class="v">{{ "%.2f"|format(grand_total) }} {{ invoice.currency }}</div>
+      </div>
+    </div>
   </div>
 
-  <!-- Podpisy -->
   <table class="sigs">
     <tr>
       <td>
-        <div class="mb-2"><strong>Vyhotovil:</strong></div>
+        <div class="mb-2"><strong>Vyhotovil</strong></div>
         {% if stamp_data_uri %}
-          <img src="{{ stamp_data_uri }}" alt="Pečiatka" style="height: 80px" class="stamp"><br>
+          <img src="{{ stamp_data_uri }}" alt="Pečiatka" class="stamp"><br>
         {% endif %}
         <div class="line"></div>
       </td>
       <td>
-        <div class="mb-2"><strong>Prevzal:</strong></div>
+        <div class="mb-2"><strong>Prevzal</strong></div>
         <div style="height: 80px;"></div>
         <div class="line"></div>
       </td>

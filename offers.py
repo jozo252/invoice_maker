@@ -1,5 +1,9 @@
-from datetime import datetime,timedelta
+import base64
+from datetime import datetime,timedelta,date
+from email.utils import parsedate_to_datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+import mimetypes
+import os
 from flask import (
     Blueprint,
     render_template,
@@ -8,15 +12,21 @@ from flask import (
     url_for,
     flash,
     send_file,
+    current_app,
 )
 from flask_login import login_required, current_user
-from ai import call_llm_extract_offer
+from flask_mail import Message
+from matplotlib.pylab import rint
+from ai import call_llm_extract_offer, call_llm_generate_offer_description
 from app import db
-from models import Lead, Offer, Invoice,Company
+from models import Lead, Offer, Invoice,Company,Client
 import json
 from pydantic import ValidationError
-from pydantic_models import OfferAI, OfferAIItem
+from pydantic_models import OfferAI, OfferAIItem, InvoiceModel
 from pdf_generator import render_invoice_to_pdf
+from extensions import mail
+from aibot_routes import invoice_number_generator
+
 
 offers = Blueprint("offers", __name__, url_prefix="/offers")
 
@@ -45,9 +55,9 @@ def normalize_offer_items(items: list[dict]) -> tuple[list[dict], Decimal]:
         if not name:
             continue
 
-        qty_raw = item.get("qty")
+        qty_raw = item.get("quantity")
         unit_raw = item.get("unit")
-        unit_price_raw = item.get("unit_price")
+        unit_price_raw = item.get("price_per_item")
 
         qty = to_decimal(qty_raw, default="1.00") if qty_raw is not None else Decimal("1.00")
         unit_price = to_decimal(unit_price_raw, default="0.00") if unit_price_raw is not None else Decimal("0.00")
@@ -71,7 +81,7 @@ def calculate_totals(items, discount_total=Decimal("0.00")):
 
     for item in items:
         qty = to_decimal(item.get("quantity", 0))
-        unit_price = to_decimal(item.get("unit_price", 0))
+        unit_price = to_decimal(item.get("price_per_item", 0))
 
         if qty < 0:
             qty = Decimal("0.00")
@@ -91,9 +101,9 @@ def calculate_totals(items, discount_total=Decimal("0.00")):
 
 
 def normalize_items_from_form():
-    item_names = request.form.getlist("item_name[]")
+    item_names = request.form.getlist("item_description[]")
     item_quantities = request.form.getlist("item_quantity[]")
-    item_unit_prices = request.form.getlist("item_unit_price[]")
+    item_unit_prices = request.form.getlist("item_price_per_item[]")
 
     items = []
 
@@ -115,7 +125,7 @@ def normalize_items_from_form():
             "quantity": float(qty_dec),
             "price_per_item": float(price_dec),
         })
-    print(f"items from func {items}")
+    #print(f"items from func {items}")
     return items
 
 def generate_offer_from_text(user_text: str, company_id: int, user_id: int) -> dict:
@@ -134,7 +144,8 @@ def generate_offer_from_text(user_text: str, company_id: int, user_id: int) -> d
         [item.model_dump() for item in ai_obj.items]
     )
 
-    discount_total = Decimal("0.00")
+    discount_total = Decimal(str(ai_obj.discount_total)) if ai_obj.discount_total is not None else Decimal("0.00")
+    
     total = subtotal - discount_total
     total = money(total)
 
@@ -172,6 +183,7 @@ def save_offer_from_generated_data(db_ready: dict) -> Offer:
         total=db_ready["total"],
         status=db_ready["status"],
     )
+    print("discount_total from db:", offer.discount_total, type(offer.discount_total))
 
     db.session.add(offer)
     db.session.commit()
@@ -197,7 +209,7 @@ def build_preview_data_from_offer(offer, user_id):
     }
 
     db_json = {
-        "invoice_number": generate_invoice_number(),
+        "invoice_number": invoice_number_generator().upper(),
         "user_id": user_id,
         "client_id": getattr(offer, "client_id", None),
         "company_id": offer.company_id,
@@ -208,9 +220,57 @@ def build_preview_data_from_offer(offer, user_id):
         "items": offer.items or [],
         "status": "unpaid",
         "payment_method": getattr(offer, "payment_method", "bank_transfer"),
+        "discount_total": str(offer.discount_total) if offer.discount_total is not None else "0.00",
     }
 
     return db_json, client_data
+
+def send_offer_email(offer: Offer):
+    if not offer.customer_email:
+        raise ValueError("Offer has no customer email.")
+
+    company = Company.query.filter_by(
+        id=offer.company_id,
+        user_id=offer.user_id
+    ).first()
+
+    if not company:
+        raise ValueError("Company for offer was not found.")
+    stamp_data_uri = None
+    if company.stamp_url:
+        stamp_abs = os.path.join(
+            current_app.static_folder, 'uploads', f'stamp_{company.user_id}.png'
+        )
+        if os.path.exists(stamp_abs):
+            mime, _ = mimetypes.guess_type(stamp_abs)
+            mime = mime or "image/png"
+            with open(stamp_abs, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("ascii")
+            stamp_data_uri = f"data:{mime};base64,{b64}"
+        else:
+            stamp_data_uri = None
+    context = {
+        "offer": offer,
+        "company": company,
+        "stamp_data_uri": stamp_data_uri,
+    }
+    pdf_path = render_invoice_to_pdf("offer_pdf.html", context)
+    body = (
+        f"Dobrý deň,\n\n"
+        f"v prílohe Vám zasielame cenovú ponuku.\n\n"
+        f"V prípade otázok nás neváhajte kontaktovať.\n\n"
+        f"S pozdravom,\n"
+        f"{company.name}"
+    )
+    msg = Message(
+        subject=f"Cenová ponuka {offer.id}",
+        recipients=[offer.customer_email],
+        body=body,
+    )
+    with open(pdf_path, "rb") as f:
+        msg.attach(f"cenová ponuka {offer.id}.pdf", "application/pdf", f.read())
+   
+    mail.send(msg)
 
 @offers.route("/")
 @login_required
@@ -276,6 +336,7 @@ def generate_offer_from_text_route():
         company_id=company_id,
         user_id=current_user.id,
     )
+    #print("RESULT:", result)
 
     if not result["ok"]:
         flash("AI výstup sa nepodarilo spracovať.", "danger")
@@ -301,7 +362,7 @@ def generate_offer_from_text_route():
         flash("Pozor: " + " | ".join(warnings), "warning")
 
     flash("Ponuka bola vytvorená.", "success")
-    return redirect(url_for("offers.edit_offer", offer_id=offer.id))
+    return redirect(url_for("offers.offer_preview", offer_id=offer.id))
 
 @offers.route("/from-lead/<int:lead_id>", methods=["GET", "POST"])
 @login_required
@@ -327,6 +388,7 @@ def generate_offer_from_lead(lead_id):
         company_id=company.id,
         user_id=current_user.id
     )
+    #print("RESULT:", result)
 
     if not result.get("ok"):
         flash("AI výstup sa nepodarilo spracovať.", "danger")
@@ -392,7 +454,243 @@ def convert_offer_to_invoice(offer_id):
         match_type="offer"
     )
 
+@offers.route("/<int:offer_id>/from-offer-to-invoice", methods=["POST"])
+@login_required
+def from_offer_to_invoice(offer_id):
+    offer = Offer.query.filter_by(id=offer_id, user_id=current_user.id).first_or_404()
+    company = Company.query.filter_by(id=offer.company_id, user_id=current_user.id).first()
+
+    if not company:
+        flash("Nemáš vytvorenú firmu.", "warning")
+        return redirect(url_for("offers.edit_offer", offer_id=offer.id))
+
+    if not offer.items:
+        flash("Ponuka nemá žiadne položky.", "warning")
+        return redirect(url_for("offers.edit_offer", offer_id=offer.id))
+
+    issue_date_obj = date.today()
+    due_date_obj = issue_date_obj + timedelta(days=14)
+
+    client = None
+    match_type = "offer"
+
+    if offer.customer_email:
+        client = Client.query.filter_by(
+            user_id=current_user.id,
+            email=offer.customer_email
+        ).first()
+
+    if not client and offer.customer_name:
+        client = Client.query.filter_by(
+            user_id=current_user.id,
+            name=offer.customer_name
+        ).first()
+
+    client_id = client.id if client else None
+
+    client_data = {
+        "name": client.name if client else (offer.customer_name or ""),
+        "email": client.email if client else (offer.customer_email or ""),
+        "ico": client.ico if client else "",
+        "dic": client.dic if client else "",
+        "street": client.street if client else "",
+        "city": client.city if client else "",
+        "zip_code": client.zip_code if client else "",
+        "country": client.country if client else "",
+        "phone": client.phone if client else "",
+        "iban": client.iban if client else "",
+        "bic": client.bic if client else "",
+        "ic_dph": client.ic_dph if client else "",
+    }
+
+    items = []
+    for item in offer.items or []:
+        qty = item.get("quantity", 1)
+        unit_price = item.get("price_per_item", 0)
+
+        try:
+            qty = float(qty)
+        except (ValueError, TypeError):
+            qty = 1.0
+
+        try:
+            unit_price = float(unit_price)
+        except (ValueError, TypeError):
+            unit_price = 0.0
+
+        items.append({
+            "description": item.get("description", ""),
+            "quantity": qty,
+            "unit": item.get("unit") or "ks",
+            "price_per_item": unit_price,
+            "total_cost": round(qty * unit_price, 2),
+        })
+
+    db_ready,client_data2 = build_preview_data_from_offer(offer, current_user.id)
+    db_ready["items"] = items
+
+    try:
+        inv = InvoiceModel.model_validate(db_ready)
+    except ValidationError as e:
+        flash(f"Dáta z ponuky sa nepodarilo pripraviť na faktúru. {e}", "danger" )
+        return redirect(url_for("offers.edit_offer", offer_id=offer.id))
+
+    return render_template(
+        "invoice_preview.html",
+        db_json=inv.model_dump(),
+        client_data=client_data,
+        match_type=match_type
+    )
+
+@offers.route("/ai_offer")
+@login_required
+def ai_offer_page():
+    companies = Company.query.filter_by(user_id=current_user.id).all()
+    return render_template("offer_bot.html", companies=companies)
+
+
+@offers.route("/ai_offer_preview", methods=["POST"])
+@login_required
+def ai_offer_preview():
+    companies = Company.query.filter_by(user_id=current_user.id).all()
+
+    user_text = (request.form.get("user_input") or "").strip()
+    company_id = request.form.get("company_id", type=int)
+
+    if not user_text:
+        flash("Vlož text pre AI.", "warning")
+        return render_template("offer_bot.html", companies=companies)
+
+    company = Company.query.filter_by(
+        id=company_id,
+        user_id=current_user.id
+    ).first()
+
+    if not company:
+        flash("Vyber platnú firmu.", "warning")
+        return render_template("offer_bot.html", companies=companies)
+
+    result = generate_offer_from_text(
+        user_text=user_text,
+        company_id=company.id,
+        user_id=current_user.id
+    )
+    #print("RESULT:", result)
+    if not result.get("ok"):
+        flash("AI výstup sa nepodarilo spracovať.", "danger")
+        return render_template(
+            "offer_bot.html",
+            companies=companies,
+            ai_errors=result.get("errors"),
+            ai_raw=result.get("raw"),
+            user_input=user_text
+        )
+
+    offer_data = result["data"]
+
+    return render_template(
+        "offer_preview.html",
+        offer_data=offer_data,
+        company=company,
+        warnings=offer_data.get("warnings", []),
+        form_action=url_for("offers.confirm_ai_offer"),
+        cancel_url=url_for("offers.ai_offer_page")
+    )
+
     
+@offers.route("/confirm-ai-offer", methods=["POST"])
+@login_required
+def confirm_ai_offer():
+    company_id = request.form.get("company_id", type=int)
+
+    company = Company.query.filter_by(
+        id=company_id,
+        user_id=current_user.id
+    ).first()
+
+    if not company:
+        flash("Firma neexistuje.", "danger")
+        return redirect(url_for("offers.ai_offer_page"))
+
+    customer_name = (request.form.get("customer_name") or "").strip()
+    customer_email = (request.form.get("customer_email") or "").strip()
+    currency = (request.form.get("currency") or "EUR").strip().upper()
+    notes = (request.form.get("notes") or "").strip()
+    discount_total = to_decimal(request.form.get("discount_total"), "0.00")
+
+    names = request.form.getlist("item_description[]")
+    qtys = request.form.getlist("item_quantity[]")
+    prices = request.form.getlist("item_price_per_item[]")
+
+    items = []
+    subtotal = Decimal("0.00")
+
+    for name, qty, price in zip(names, qtys, prices):
+        name = (name or "").strip()
+        if not name:
+            continue
+
+        try:
+            qty_val = Decimal(str(qty).replace(",", "."))
+        except Exception:
+            qty_val = Decimal("0.00")
+
+        try:
+            price_val = Decimal(str(price).replace(",", "."))
+        except Exception:
+            price_val = Decimal("0.00")
+
+        line_total = qty_val * price_val
+        subtotal += line_total
+
+        items.append({
+            "description": name,
+            "quantity": float(qty_val),
+            "price_per_item": float(price_val),
+        })
+
+    total = subtotal - discount_total
+
+    if not items:
+        flash("Ponuka musí mať aspoň jednu položku.", "warning")
+        return render_template(
+            "offers/offer_preview.html",
+            offer_data={
+                "company_id": company.id,
+                "customer_name": customer_name,
+                "customer_email": customer_email,
+                "currency": currency,
+                "items": items,
+                "notes": notes,
+            },
+            company=company,
+            warnings=[],
+            form_action=url_for("offers.confirm_ai_offer"),
+            cancel_url=url_for("offers.ai_offer_page")
+        )
+
+    offer = Offer(
+        user_id=current_user.id,
+        company_id=company.id,
+        customer_name=customer_name or None,
+        customer_email=customer_email or None,
+        currency=currency,
+        items=items,
+        notes=notes or None,
+        subtotal=subtotal,
+        discount_total=discount_total,
+        total=total,
+        status="draft",
+        created_at=datetime.utcnow(),
+    )
+
+    db.session.add(offer)
+    db.session.commit()
+
+    flash("Ponuka bola vytvorená.", "success")
+    return redirect(url_for("offers.edit_offer", offer_id=offer.id))
+
+
 @offers.route("/<int:offer_id>")
 @login_required
 def edit_offer(offer_id):
@@ -437,23 +735,43 @@ def update_offer(offer_id):
 def preview_offer(offer_id):
     offer = Offer.query.filter_by(id=offer_id, user_id=current_user.id).first_or_404()
     company = Company.query.filter_by(id=offer.company_id, user_id=current_user.id).first_or_404()
-
+    stamp_data_uri = None
+    if company.stamp_url:
+        stamp_abs = os.path.join(
+            current_app.static_folder, 'uploads', f'stamp_{company.user_id}.png'
+        )
+        if os.path.exists(stamp_abs):
+            mime, _ = mimetypes.guess_type(stamp_abs)
+            mime = mime or "image/png"
+            with open(stamp_abs, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("ascii")
+            stamp_data_uri = f"data:{mime};base64,{b64}"
     return render_template(
         "offer_preview.html",
         offer_data=offer,
         company=company,
-        stamp_data_uri=None,
+        stamp_data_uri=stamp_data_uri,
     )
 @offers.route("/<int:offer_id>/download")
 @login_required
 def download_offer(offer_id):
     offer = Offer.query.filter_by(id=offer_id, user_id=current_user.id).first_or_404()
     company = Company.query.filter_by(id=offer.company_id, user_id=current_user.id).first_or_404()
-
+    stamp_data_uri = None
+    if company.stamp_url:
+        stamp_abs = os.path.join(
+            current_app.static_folder, 'uploads', f'stamp_{company.user_id}.png'
+        )
+        if os.path.exists(stamp_abs):
+            mime, _ = mimetypes.guess_type(stamp_abs)
+            mime = mime or "image/png"
+            with open(stamp_abs, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("ascii")
+            stamp_data_uri = f"data:{mime};base64,{b64}"
     context = {
         "offer": offer,
         "company": company,
-        "stamp_data_uri": None,
+        "stamp_data_uri": stamp_data_uri,
     }
     print(offer.items)
     pdf_path = render_invoice_to_pdf("offer_pdf.html", context)
@@ -475,9 +793,9 @@ def save_offer_from_preview():
     notes = (request.form.get("notes") or "").strip()
 
     # --- ITEMS ---
-    names = request.form.getlist("item_name[]")
-    qtys = request.form.getlist("item_qty[]")
-    prices = request.form.getlist("item_unit_price[]")
+    names = request.form.getlist("item_description[]")
+    qtys = request.form.getlist("item_quantity[]")
+    prices = request.form.getlist("item_price_per_item[]")
 
     items = []
     subtotal = Decimal("0.00")
@@ -506,7 +824,7 @@ def save_offer_from_preview():
             "price_per_item": float(price_val),
         })
 
-    discount_total = Decimal("0.00")
+    discount_total = to_decimal(request.form.get("discount_total"), "0.00")
     total = subtotal - discount_total
 
     # --- CREATE OFFER ---
@@ -536,6 +854,50 @@ def save_offer_from_preview():
 
     flash("Ponuka bola uložená.", "success")
     return redirect(url_for("offers.edit_offer", offer_id=offer.id))
+@offers.route("/<int:offer_id>/send-email", methods=["POST"])
+@login_required
+def send_offer_email_route(offer_id):
+    offer = Offer.query.filter_by(id=offer_id, user_id=current_user.id).first_or_404()
+
+    try:
+        send_offer_email(offer)
+        offer.status = "sent"
+        db.session.commit()
+        flash("Ponuka byla odeslána emailem.", "success")
+    except Exception as e:
+        flash(f"Chyba při odesílání emailu: {str(e)}", "danger")
+
+    return redirect(url_for("offers.edit_offer", offer_id=offer.id))
+
+@offers.route("/<int:offer_id>/mark_accepted", methods=["POST"])
+@login_required
+def mark_offer_accepted(offer_id):
+    offer = Offer.query.filter_by(id=offer_id, user_id=current_user.id).first_or_404()
+    offer.status = "accepted"
+    db.session.commit()
+    flash(f"Ponuka {offer.id} bola označená ako prijatá.", "success")
+    return redirect(url_for("offers.edit_offer", offer_id=offer.id))
+
+
+@offers.route("/ai_expand_notes", methods=["POST"])
+@login_required
+def ai_expand_notes():
+    data = request.get_json(silent=True) or {}
+    item_text = (data.get("text") or "").strip()
+    print("DATA:", data)
+    print("TEXT:", item_text)
+
+    if not item_text:
+        return {"ok": False, "error": "Chýba text poznámky."}, 400
+
+    try:
+        improved_text = call_llm_generate_offer_description(item_text)
+        return {"ok": True, "text": improved_text}
+    except Exception as e:
+        current_app.logger.exception("AI expand notes failed")
+        return {"ok": False, "error": str(e)}, 500
+    
+
 """@offers.route("/<int:offer_id>/convert-to-invoice", methods=["POST"])
 @login_required
 def convert_offer_to_invoice(offer_id):

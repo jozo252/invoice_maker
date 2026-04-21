@@ -1,17 +1,170 @@
 {% extends "base.html" %}
 
+{% block title %}Môj účet{% endblock %}
 
 {% block content %}
-<h1>Môj účet</h1>
-<p><strong>Meno:</strong> {{ user.username }}</p>
-<p><strong>Email:</strong> {{ user.email }}</p>
-<p><strong>Stav:</strong> {{ "Aktívne predplatné" if user.is_paid else "Bez predplatného" }}</p>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+    <div>
+        <h1 class="h2 mb-1">Môj účet</h1>
+        <div class="text-muted">Spravuj svoj profil, predplatné a firemné údaje.</div>
+    </div>
+</div>
 
-{% if user.is_paid %}
-  <p>Ďakujeme, že si predplatiteľ!</p>
-  <!-- Optional: manage billing link -->
-{% else %}
-  <a href="{{ url_for('main.pricing') }}" class="btn btn-primary">Aktivuj predplatné</a>
-{% endif %}
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <span class="fw-semibold">Profil</span>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="text-muted small">Používateľské meno</div>
+                    <div class="fw-medium">{{ user.username }}</div>
+                </div>
 
+                <div class="mb-3">
+                    <div class="text-muted small">Email</div>
+                    <div class="fw-medium">{{ user.email }}</div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="text-muted small">Predplatné</div>
+                    {% if user.is_paid %}
+                        <span class="badge bg-success-lt text-success">Aktívne predplatné</span>
+                    {% else %}
+                        <span class="badge bg-secondary-lt text-secondary">Bez predplatného</span>
+                    {% endif %}
+                </div>
+
+                {% if not user.is_paid %}
+                <a href="{{ url_for('main.pricing') }}" class="btn btn-primary w-100">
+                    Aktivovať predplatné
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="fw-semibold">Ďalší krok</span>
+            </div>
+            <div class="card-body">
+                {% if not company %}
+                    <div class="text-muted mb-3">
+                        Nemáš ešte vyplnenú firmu. Bez firemných údajov nevytvoríš korektnú faktúru.
+                    </div>
+                    <a href="{{ url_for('main.my_company') }}" class="btn btn-primary w-100">
+                        Vyplniť firmu
+                    </a>
+                {% else %}
+                    <div class="text-muted mb-3">
+                        Firma je vyplnená. Môžeš pokračovať na klientov alebo vytvoriť faktúru.
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('main.list_clients') }}" class="btn btn-outline-secondary">
+                            Klienti
+                        </a>
+                        <a href="{{ url_for('main.add_invoice') }}" class="btn btn-primary">
+                            Nová faktúra
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+                <span class="fw-semibold">Moja firma</span>
+
+                <a href="{{ url_for('main.my_company') }}" class="btn btn-sm btn-outline-primary">
+                    {% if company %}
+                        Upraviť firmu
+                    {% else %}
+                        Pridať firmu
+                    {% endif %}
+                </a>
+            </div>
+
+            <div class="card-body">
+                {% if company %}
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="text-muted small">Názov firmy / Meno</div>
+                            <div class="fw-medium">{{ company.name or "—" }}</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="text-muted small">Krajina</div>
+                            <div class="fw-medium">{{ company.country or "—" }}</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="text-muted small">IČO</div>
+                            <div class="fw-medium">{{ company.ico or "—" }}</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="text-muted small">DIČ</div>
+                            <div class="fw-medium">{{ company.dic or "—" }}</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="text-muted small">IČ DPH</div>
+                            <div class="fw-medium">{{ company.ic_dph or "—" }}</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="text-muted small">Platiteľ DPH</div>
+                            <div class="fw-medium">
+                                {{ "Áno" if company.is_vat_payer else "Nie" }}
+                            </div>
+                        </div>
+
+                        <div class="col-md-12">
+                            <div class="text-muted small">Adresa</div>
+                            <div class="fw-medium">
+                                {{ company.street or "—" }}<br>
+                                {{ company.zip_code or "" }} {{ company.city or "" }}<br>
+                                {{ company.country or "" }}
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="text-muted small">Email</div>
+                            <div class="fw-medium">{{ company.email or "—" }}</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="text-muted small">Telefón</div>
+                            <div class="fw-medium">{{ company.phone or "—" }}</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="text-muted small">IBAN</div>
+                            <div class="fw-medium">{{ company.iban or "—" }}</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="text-muted small">BIC / SWIFT</div>
+                            <div class="fw-medium">{{ company.bic or "—" }}</div>
+                        </div>
+
+                        {% if company.stamp_url %}
+                        <div class="col-md-12">
+                            <div class="text-muted small mb-2">Pečiatka</div>
+                            <img src="{{ company.stamp_url }}" alt="Pečiatka" style="max-height: 90px;">
+                        </div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div class="text-muted">
+                        Zatiaľ nemáš vyplnené firemné údaje.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

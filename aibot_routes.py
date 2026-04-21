@@ -99,6 +99,7 @@ def build_preview_data_from_form(form):
         "variable_symbol": form.get("variable_symbol", ""),
         "currency": form.get("currency", "EUR"),
         "payment_method": form.get("payment_method", "bank_transfer"),
+        "discount_total": form.get("discount_total", "0.00"),
     }
 
     vat_raw = (form.get("vat_rate") or "").strip()

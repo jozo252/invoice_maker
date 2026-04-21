@@ -49,8 +49,9 @@ OFFER_SYSTEM = (
     "- customer_name: string or null\n"
     "- customer_email: string or null\n"
     "- currency: 3-letter code (EUR, USD, CZK, PLN, etc.) or null\n"
-    "- items: list of objects with {name, qty, unit, unit_price}\n"
-    "  where name is string, qty is number or null, unit is string or null, unit_price is number or null\n"
+    "- items: list of objects with {name, quantity, unit, price_per_item}\n"
+    "- discount_total: number or null, dont put it in the items list\n"
+    "  where name is string, quantity is number or null, unit is string or null, price_per_item is number or null\n"
     "- notes: string or null\n"
     "- missing_fields: list of strings\n"
     "- warnings: list of strings\n\n"
@@ -60,15 +61,32 @@ OFFER_SYSTEM = (
     "- If a field is not clearly present in the text, set it to null.\n"
     "- If no offer items are clearly present, return an empty items list.\n"
     "- Each item should represent one material, service, or work task.\n"
-    "- qty must be a number or null.\n"
+    "- quantity must be a number or null.\n"
     "- unit must be a short unit string like ks, hod, m, m2, m3, day, set, or null.\n"
-    "- unit_price must be a number or null.\n"
+    "- price_per_item must be a number or null.\n"
     "- Do not calculate subtotal, VAT, discount, or total.\n"
     "- Do not guess customer email or currency.\n"
-    "- If quantity or unit price is unclear, set it to null and mention ambiguity in warnings.\n"
+    "- If quantity or price_per_item is unclear, set it to null and mention ambiguity in warnings.\n"
     "- missing_fields may include only fields that can be extracted from the user's text.\n"
     "- Add important ambiguities to warnings.\n"
     "- Return values in input language(days,dni,tags)\n"
+)
+OFFER_DESCRIPTION_SYSTEM = (
+    "You are an assistant that improves offer/work descriptions. "
+    "Rewrite the input into a clearer, more professional version.\n\n"
+
+    "Rules:\n"
+    "- Keep it short and structured.\n"
+    "- Use bullet-style phrases, not long sentences.\n"
+    "- Do not write marketing text or filler words.\n"
+    "- Do not invent new materials, technologies, or work that is not clearly implied.\n"
+    "- Keep it realistic and suitable for a price offer.\n"
+    "- Prefer short phrases separated by commas or line breaks.\n"
+    "- Maximum 1–3 lines.\n"
+    "- Keep the original language.\n\n"
+
+    "Output:\n"
+    "- Return ONLY the improved text, no explanations."
 )
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def call_llm_extract(user_text: str) -> dict:
@@ -100,6 +118,19 @@ def transcribe_ai(temp_path):
     print(text)
     return text
 
+def call_llm_generate_offer_description(user_text: str) -> str:
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": OFFER_DESCRIPTION_SYSTEM},
+            {"role": "user", "content": user_text},
+        ],
+        temperature=0.2,
+    )
+
+    content = response.choices[0].message.content
+    print(f"generated description: {content}")
+    return content.strip()
     
 def _round2(x: float) -> float:
     return float(Decimal(str(x)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
@@ -124,10 +155,13 @@ def create_invoice_from_model(data: dict) -> int:
             total_cost=total
         ))
 
-    vat_amount = _round2(subtotal * (inv.vat_rate / 100.0))
-    grand_total = _round2(subtotal + vat_amount)
-    #grand_total = _round2(subtotal)
+    
+    vat_rate = float(Decimal(str(inv.vat_rate) or Decimal("0")))
+    discount = float(Decimal(str(inv.discount_total) or Decimal("0")))
 
+    tax_base = subtotal - discount
+    vat_amount = tax_base * (vat_rate / 100)
+    grand_total = tax_base + vat_amount
     status = InvoiceStatus[inv.status] if inv.status in InvoiceStatus.__members__ else InvoiceStatus.unpaid
     paym = PaymentMethod[inv.payment_method] if inv.payment_method in PaymentMethod.__members__ else PaymentMethod.bank_transfer
 
@@ -139,15 +173,16 @@ def create_invoice_from_model(data: dict) -> int:
         variable_symbol=inv.variable_symbol,
         currency=inv.currency,
         total_cost=grand_total,
-        vat_rate=inv.vat_rate,
+        discount_total=discount,
+        vat_rate=vat_rate,
         client_id=inv.client_id,
         company_id=inv.company_id,
         payment_method=paym,
         status=status,
     )
+
     db.session.add(db_inv)
     db.session.flush()
-
     for it in fixed_items:
         db.session.add(InvoiceItem(invoice_id=db_inv.id, **it))
 

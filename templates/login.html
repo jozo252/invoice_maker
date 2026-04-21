@@ -1,16 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
-        <h2>Login</h2>
-        <form method="POST" action="{{ url_for('main.login') }}">
-            {{ form.hidden_tag() }}
-            <div class="form-group">
-                {% with messages = get_flashed_messages(with_categories=true) %}
+{% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
                     <div class="alert alert-{{ category }} mt-2">{{ message }}</div>
                     {% endfor %}
                 {% endif %}
                 {% endwith %}
+        <h2>Login</h2>
+        <form method="POST" action="{{ url_for('main.login') }}">
+            {{ form.hidden_tag() }}
+            <div class="form-group">
+                
 
                 {{ form.email.label(class="form-label") }}
                 {{ form.email(class="form-control") }}
@@ -33,6 +34,6 @@
                 {{ form.submit(class="btn btn-primary") }}
             </div>
         </form>
-        <p>Don't have an account? <a href="{{ url_for('main.register') }}">Register here</a>.</p>
+        <p>Nemáš účet? <a href="{{ url_for('main.register') }}">Zaregistruj sa tu</a>.</p>
     </div>
 {% endblock %}

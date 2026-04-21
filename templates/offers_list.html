@@ -3,59 +3,123 @@
 {% block title %}Ponuky{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 1000px; margin: 40px auto;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-        <div>
-            <h1>Ponuky</h1>
-            <p>Prehľad vytvorených cenových ponúk.</p>
-        </div>
-        <div>
-            <a href="{{ url_for('offers.new_lead') }}">+ Nový dopyt</a>
-        </div>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+    <div>
+        <h1 class="h2 mb-1">Ponuky</h1>
+        <div class="text-muted">Prehľad vytvorených cenových ponúk.</div>
     </div>
 
-    {% if offers %}
-        <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr>
-                        <th style="text-align: left; padding: 12px; border-bottom: 1px solid #ddd;">ID</th>
-                        <th style="text-align: left; padding: 12px; border-bottom: 1px solid #ddd;">Zákazník</th>
-                        <th style="text-align: left; padding: 12px; border-bottom: 1px solid #ddd;">Status</th>
-                        <th style="text-align: left; padding: 12px; border-bottom: 1px solid #ddd;">Suma</th>
-                        <th style="text-align: left; padding: 12px; border-bottom: 1px solid #ddd;">Vytvorené</th>
-                        <th style="text-align: left; padding: 12px; border-bottom: 1px solid #ddd;">Akcie</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for offer in offers %}
-                        <tr>
-                            <td style="padding: 12px; border-bottom: 1px solid #eee;">#{{ offer.id }}</td>
-                            <td style="padding: 12px; border-bottom: 1px solid #eee;">
-                                {{ offer.customer_name or "Bez mena" }}
-                            </td>
-                            <td style="padding: 12px; border-bottom: 1px solid #eee;">
-                                {{ offer.status }}
-                            </td>
-                            <td style="padding: 12px; border-bottom: 1px solid #eee;">
-                                {{ "%.2f"|format(offer.total or 0) }} €
-                            </td>
-                            <td style="padding: 12px; border-bottom: 1px solid #eee;">
-                                {{ offer.created_at.strftime("%d.%m.%Y %H:%M") if offer.created_at else "-" }}
-                            </td>
-                            <td style="padding: 12px; border-bottom: 1px solid #eee;">
-                                <a href="{{ url_for('offers.edit_offer', offer_id=offer.id) }}">Otvoriť</a>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        <div style="padding: 20px; border: 1px solid #ddd; margin-top: 20px;">
-            <p>Zatiaľ nemáš žiadne ponuky.</p>
-            <a href="{{ url_for('offers.new_lead') }}">Vytvoriť prvý dopyt</a>
-        </div>
-    {% endif %}
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('offers.ai_offer_page') }}" class="btn btn-primary">
+            <i class="ti ti-sparkles me-1"></i>
+            Nová ponuka
+        </a>
+        <a href="{{ url_for('offers.new_lead') }}" class="btn btn-outline-secondary">
+            <i class="ti ti-message-plus me-1"></i>
+            Nový dopyt
+        </a>
+    </div>
 </div>
+
+{% if offers %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Zákazník</th>
+                    <th>Stav</th>
+                    <th>Suma</th>
+                    <th>Vytvorené</th>
+                    <th class="text-end">Akcie</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for offer in offers %}
+                <tr>
+                    <td class="fw-semibold">#{{ offer.id }}</td>
+
+                    <td>
+                        <div class="fw-medium">
+                            {{ offer.customer_name or "Bez mena" }}
+                        </div>
+                        {% if offer.customer_email %}
+                            <div class="text-muted small">{{ offer.customer_email }}</div>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if offer.status == "accepted" %}
+                            <span class="badge bg-success-lt text-success">Prijatá</span>
+                        {% elif offer.status == "sent" %}
+                            <span class="badge bg-primary-lt text-primary">Odoslaná</span>
+                        {% elif offer.status == "draft" %}
+                            <span class="badge bg-secondary-lt text-secondary">Koncept</span>
+                        {% else %}
+                            <span class="badge bg-warning-lt text-warning">{{ offer.status }}</span>
+                        {% endif %}
+                    </td>
+
+                    <td class="fw-medium">
+                        {{ "%.2f"|format(offer.total or 0) }} €
+                    </td>
+
+                    <td>
+                        {{ offer.created_at.strftime("%d.%m.%Y %H:%M") if offer.created_at else "-" }}
+                    </td>
+
+                    <td class="text-end">
+                        <div class="d-flex flex-column flex-lg-row justify-content-end gap-2">
+                            <a href="{{ url_for('offers.edit_offer', offer_id=offer.id) }}" class="btn btn-sm btn-primary">
+                                <i class="ti ti-eye me-1"></i>
+                                Otvoriť
+                            </a>
+
+                            <form method="POST" action="{{ url_for('offers.send_offer_email_route', offer_id=offer.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+                                    <i class="ti ti-mail me-1"></i>
+                                    Odoslať
+                                </button>
+                            </form>
+
+                            {% if offer.status != "accepted" %}
+                            <form method="POST" action="{{ url_for('offers.mark_offer_accepted', offer_id=offer.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-outline-success w-100">
+                                    <i class="ti ti-check me-1"></i>
+                                    Označiť ako prijatú
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body">
+        <h2 class="h4 mb-2">Zatiaľ nemáš žiadne ponuky</h2>
+        <div class="text-muted mb-3">
+            Začni vytvorením prvej ponuky alebo nového dopytu.
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ url_for('offers.ai_offer_page') }}" class="btn btn-primary">
+                <i class="ti ti-sparkles me-1"></i>
+                Vytvoriť prvú ponuku
+            </a>
+            <a href="{{ url_for('offers.new_lead') }}" class="btn btn-outline-secondary">
+                <i class="ti ti-message-plus me-1"></i>
+                Vytvoriť dopyt
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

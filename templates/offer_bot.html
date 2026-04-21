@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}AI ponuka{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+  <div>
+    <h1 class="h2 mb-1">AI ponuka</h1>
+    <div class="text-muted">
+      Napíš popis zákazky a pripraví sa návrh cenovej ponuky na úpravu.
+    </div>
+  </div>
+</div>
+
+<form method="POST" action="{{ url_for('offers.ai_offer_preview') }}" id="ai-offer-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card h-100">
+        <div class="card-header">
+          <span class="fw-semibold">1. Výber firmy</span>
+        </div>
+        <div class="card-body">
+          <label for="company_id" class="form-label">Firma</label>
+          <select name="company_id" id="company_id" class="form-select" required>
+            {% for company in companies %}
+              <option value="{{ company.id }}">{{ company.name }}</option>
+            {% endfor %}
+          </select>
+
+          <div class="form-text mt-2">
+            Vyber firmu, za ktorú chceš ponuku vytvoriť.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div class="card h-100">
+        <div class="card-header">
+          <span class="fw-semibold">2. Popis zákazky</span>
+        </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+  <label for="user_input" class="form-label mb-0">Text pre AI</label>
+
+  <button type="button" class="btn btn-outline-secondary btn-sm" id="record-btn">
+    🎤 Nahrať hlas
+  </button>
+</div>
+
+<textarea
+  name="user_input"
+  id="user_input"
+  rows="10"
+  class="form-control"
+  placeholder="Popíš zákazku alebo použi mikrofón..."
+  required
+></textarea>
+
+<div id="record-status" class="form-text mt-2 d-none"></div>
+
+          <div class="form-text mt-2">
+            Napíš čo najpresnejší popis. AI pripraví návrh položiek a poznámky, ktoré potom ešte upravíš.
+          </div>
+
+          <div class="mt-3 p-3 bg-body-secondary rounded">
+            <div class="fw-semibold mb-2">Čo je dobré uviesť</div>
+            <ul class="mb-0 ps-3">
+              <li>meno zakaznika</li>
+              <li>čo sa má robiť</li>
+              <li>orientačné množstvá</li>
+              <li>či ide o materiál, prácu alebo oboje</li>
+              <li>ak máš, tak aj cenu alebo rozpočet</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-4">
+    <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+      <div>
+        <div class="fw-semibold">3. Vytvorenie návrhu</div>
+        <div id="loading-note" class="form-text d-none">
+          Spracovanie môže trvať pár sekúnd.
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="generate-btn">
+        <span class="btn-text">
+          <i class="ti ti-sparkles me-1"></i>
+          Vytvoriť návrh ponuky
+        </span>
+        <span class="btn-loading d-none">
+          <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+          Generujem návrh...
+        </span>
+      </button>
+    </div>
+  </div>
+</form>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const form = document.getElementById("ai-offer-form");
+  const button = document.getElementById("generate-btn");
+  const loadingNote = document.getElementById("loading-note");
+
+  if (form && button) {
+    form.addEventListener("submit", function () {
+      const btnText = button.querySelector(".btn-text");
+      const btnLoading = button.querySelector(".btn-loading");
+
+      button.disabled = true;
+
+      if (btnText) btnText.classList.add("d-none");
+      if (btnLoading) btnLoading.classList.remove("d-none");
+      if (loadingNote) loadingNote.classList.remove("d-none");
+    });
+  }
+
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let isRecording = false;
+  let stream = null;
+
+  const recordBtn = document.getElementById("record-btn");
+  const statusText = document.getElementById("record-status");
+  const textarea = document.getElementById("user_input");
+
+  if (!recordBtn || !statusText || !textarea) {
+    return;
+  }
+
+  recordBtn.addEventListener("click", async () => {
+    if (!isRecording) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+
+          if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+          }
+
+          statusText.classList.remove("d-none");
+          statusText.textContent = "Spracovávam hlas...";
+
+          const formData = new FormData();
+          formData.append("audio", audioBlob, "recording.webm");
+
+          try {
+            const res = await fetch("/ai/transcribe-audio", {
+              method: "POST",
+              body: formData
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+              throw new Error(data.error || "Transkripcia zlyhala.");
+            }
+
+            if (data.text) {
+              textarea.value += (textarea.value.trim() ? "\n" : "") + data.text.trim();
+              statusText.textContent = "Prepísané ✔";
+            } else {
+              statusText.textContent = "Nepodarilo sa získať text.";
+            }
+          } catch (err) {
+            console.error(err);
+            statusText.textContent = err.message || "Chyba pri odosielaní.";
+          }
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+
+        recordBtn.textContent = "⏹ Stop";
+        statusText.classList.remove("d-none");
+        statusText.textContent = "Nahrávam...";
+      } catch (err) {
+        console.error(err);
+        statusText.classList.remove("d-none");
+        statusText.textContent = "Mikrofón nie je dostupný.";
+      }
+    } else {
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+      }
+
+      isRecording = false;
+      recordBtn.textContent = "🎤 Nahrať hlas";
+    }
+  });
+});
+</script>
+{% endblock %}

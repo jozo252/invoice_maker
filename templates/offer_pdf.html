@@ -67,7 +67,7 @@
 </head>
 <body>
 
-  <h1 class="mb-4">Cenová ponuka</h1>
+  <h1 class="mb-4">Cenová ponuka {{ offer.id }}</h1>
 
   <table class="split mb-3 avoid-break">
     <tr>
@@ -110,10 +110,7 @@
           <small class="muted d-block">Dátum vytvorenia</small>
           <strong>{{ offer.created_at.strftime('%d.%m.%Y') if offer.created_at else "-" }}</strong>
         </td>
-        <td>
-          <small class="muted d-block">Status</small>
-          <strong>{{ offer.status or "draft" }}</strong>
-        </td>
+        
       </tr>
     </table>
   </div>

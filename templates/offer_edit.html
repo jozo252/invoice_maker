@@ -3,158 +3,256 @@
 {% block title %}Upraviť ponuku{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 1000px; margin: 40px auto;">
-    <h1>Upraviť ponuku #{{ offer.id }}</h1>
+<meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <form method="POST" action="{{ url_for('offers.update_offer', offer_id=offer.id) }}">
-        {{ form.hidden_tag() if form else "" }}
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
-            <div>
-                <label for="customer_name"><strong>Meno zákazníka</strong></label><br>
-                <input
-                    type="text"
-                    id="customer_name"
-                    name="customer_name"
-                    value="{{ offer.customer_name or '' }}"
-                    style="width: 100%; padding: 10px; margin-top: 6px;"
-                >
-            </div>
-
-            <div>
-                <label for="customer_email"><strong>Email zákazníka</strong></label><br>
-                <input
-                    type="email"
-                    id="customer_email"
-                    name="customer_email"
-                    value="{{ offer.customer_email or '' }}"
-                    style="width: 100%; padding: 10px; margin-top: 6px;"
-                >
-            </div>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+    <div>
+        <h1 class="h2 mb-1">Upraviť ponuku #{{ offer.id }}</h1>
+        <div class="text-muted">
+            Uprav údaje, položky a potom ponuku ulož alebo premeň na faktúru.
         </div>
-
-        <div style="margin-bottom: 24px;">
-            <label for="notes"><strong>Poznámka / popis práce</strong></label><br>
-            <textarea
-                id="notes"
-                name="notes"
-                rows="4"
-                style="width: 100%; padding: 10px; margin-top: 6px;"
-            >{{ offer.notes or '' }}</textarea>
-        </div>
-
-        <h2>Položky</h2>
-
-        <div style="overflow-x: auto; margin-bottom: 20px;">
-            <table id="items-table" style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr>
-                        <th style="text-align: left; padding: 10px; border-bottom: 1px solid #ddd;">Názov</th>
-                        <th style="text-align: left; padding: 10px; border-bottom: 1px solid #ddd;">Množstvo</th>
-                        <th style="text-align: left; padding: 10px; border-bottom: 1px solid #ddd;">Cena za jednotku</th>
-                        <th style="text-align: left; padding: 10px; border-bottom: 1px solid #ddd;">Spolu</th>
-                        <th style="text-align: left; padding: 10px; border-bottom: 1px solid #ddd;">Akcia</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% set items = offer.items or [] %}
-                    {% for item in items %}
-                    <tr class="item-row">
-                        <td style="padding: 10px; border-bottom: 1px solid #eee;">
-                            <input
-                                type="text"
-                                name="item_name[]"
-                                value="{{ item.description if item.description is defined else item['name'] }}"
-                                style="width: 100%; padding: 8px;"
-                                required
-                            >
-                        </td>
-                        <td style="padding: 10px; border-bottom: 1px solid #eee;">
-                            <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                name="item_quantity[]"
-                                value="{{ item.quantity if item.quantity is defined else item['quantity'] }}"
-                                class="qty-input"
-                                style="width: 100%; padding: 8px;"
-                                required
-                            >
-                        </td>
-                        <td style="padding: 10px; border-bottom: 1px solid #eee;">
-                            <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                name="item_unit_price[]"
-                                value="{{ item.price_per_item if item.price_per_item is defined else item['unit_price'] }}"
-                                class="price-input"
-                                style="width: 100%; padding: 8px;"
-                                required
-                            >
-                        </td>
-                        <td style="padding: 10px; border-bottom: 1px solid #eee;">
-                            <span class="line-total">0.00 €</span>
-                        </td>
-                        <td style="padding: 10px; border-bottom: 1px solid #eee;">
-                            <button type="button" class="remove-row-btn">Zmazať</button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <button type="button" id="add-row-btn" style="margin-bottom: 24px;">+ Pridať položku</button>
-
-        <div style="max-width: 350px; margin-left: auto; border: 1px solid #ddd; padding: 16px;">
-            <div style="margin-bottom: 12px;">
-                <label for="discount_total"><strong>Zľava</strong></label><br>
-                <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    id="discount_total"
-                    name="discount_total"
-                    value="{{ offer.discount_total or 0 }}"
-                    style="width: 100%; padding: 8px; margin-top: 6px;"
-                >
-            </div>
-
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <span>Medzisúčet:</span>
-                <strong id="subtotal-display">0.00 €</strong>
-            </div>
-
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <span>Zľava:</span>
-                <strong id="discount-display">0.00 €</strong>
-            </div>
-
-            <hr>
-
-            <div style="display: flex; justify-content: space-between; margin-top: 8px;">
-                <span>Spolu:</span>
-                <strong id="total-display">0.00 €</strong>
-            </div>
-        </div>
-
-        <div style="display: flex; gap: 10px; margin-top: 24px; flex-wrap: wrap;">
-            <button type="submit">Uložiť ponuku</button>
-        </div>
-    </form>
-
-    <div style="margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap;">
-        <form method="POST" action="{{ url_for('offers.convert_offer_to_invoice', offer_id=offer.id) }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit">Vytvoriť faktúru</button>
-        </form>
-
-        <a href="{{ url_for('offers.offers_list') }}">Späť na zoznam</a>
     </div>
+
+    <a href="{{ url_for('offers.offers_list') }}" class="btn btn-outline-secondary">
+        <i class="ti ti-arrow-left me-1"></i>
+        Späť na zoznam
+    </a>
 </div>
 
+<form method="POST" action="{{ url_for('offers.update_offer', offer_id=offer.id) }}" id="edit-offer-form">
+    {{ form.hidden_tag() if form else "" }}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <span class="fw-semibold">Zákazník</span>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="customer_name" class="form-label">Meno zákazníka</label>
+                            <input
+                                type="text"
+                                id="customer_name"
+                                name="customer_name"
+                                class="form-control"
+                                value="{{ offer.customer_name or '' }}"
+                            >
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="customer_email" class="form-label">Email zákazníka</label>
+                            <input
+                                type="email"
+                                id="customer_email"
+                                name="customer_email"
+                                class="form-control"
+                                value="{{ offer.customer_email or '' }}"
+                            >
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+                    <span class="fw-semibold">Poznámka / popis práce</span>
+
+                    <button type="button" class="btn btn-outline-secondary btn-sm ai-expand-notes">
+                        <i class="ti ti-sparkles me-1"></i>
+                        AI rozpis
+                    </button>
+                </div>
+                <div class="card-body">
+                    <textarea
+                        id="notes"
+                        name="notes"
+                        rows="5"
+                        class="form-control"
+                        placeholder="Doplň popis práce alebo poznámku k ponuke..."
+                    >{{ offer.notes or '' }}</textarea>
+
+                    <div class="form-text mt-2">
+                        AI rozpis rozšíri text do použiteľnejšieho popisu pre klienta.
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+                    <span class="fw-semibold">Položky ponuky</span>
+
+                    <button type="button" id="add-row-btn" class="btn btn-outline-secondary btn-sm">
+                        <i class="ti ti-plus me-1"></i>
+                        Pridať položku
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table id="items-table" class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Názov</th>
+                                <th class="text-end">Množstvo</th>
+                                <th class="text-end">Cena za jednotku</th>
+                                <th class="text-end">Spolu</th>
+                                <th class="text-end">Akcia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set items = offer.items or [] %}
+                            {% for item in items %}
+                            <tr class="item-row">
+                                <td>
+                                    <input
+                                        type="text"
+                                        name="item_description[]"
+                                        class="form-control"
+                                        value="{{ item.description if item.description is defined else item['name'] }}"
+                                        required
+                                    >
+                                </td>
+                                <td>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        name="item_quantity[]"
+                                        class="form-control text-end qty-input"
+                                        value="{{ item.quantity if item.quantity is defined else item['quantity'] }}"
+                                        required
+                                    >
+                                </td>
+                                <td>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        name="item_price_per_item[]"
+                                        class="form-control text-end price-input"
+                                        value="{{ item.price_per_item if item.price_per_item is defined else item['price_per_item'] }}"
+                                        required
+                                    >
+                                </td>
+                                <td class="text-end fw-semibold">
+                                    <span class="line-total">0.00 €</span>
+                                </td>
+                                <td class="text-end">
+                                    <button type="button" class="btn btn-outline-danger btn-sm remove-row-btn">
+                                        <i class="ti ti-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if not items %}
+                <div class="card-body text-muted">
+                    Zatiaľ tu nie sú žiadne položky. Pridaj ich ručne.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div style="position: sticky; top: 1rem;">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <span class="fw-semibold">Súhrn</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Medzisúčet</span>
+                            <strong id="subtotal-display">0.00 €</strong>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="discount_total" class="form-label">Zľava</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                id="discount_total"
+                                name="discount_total"
+                                class="form-control"
+                                value="{{ '%.2f'|format(offer.discount_total) if offer.discount_total is not none else '0.00' }}"
+                            >
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Zľava</span>
+                            <strong id="discount-display">0.00 €</strong>
+                        </div>
+
+                        <hr>
+
+                        <div class="d-flex justify-content-between fs-5 fw-semibold">
+                            <span>Spolu</span>
+                            <strong id="total-display">0.00 €</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="fw-semibold">Akcie</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="ti ti-device-floppy me-1"></i>
+                                Uložiť zmeny
+                            </button>
+
+                               <button
+                                type="submit"
+                                class="btn btn-outline-primary"
+                                formaction="{{ url_for('offers.from_offer_to_invoice', offer_id=offer.id) }}"
+                                formmethod="POST"
+                            >
+                                Vytvoriť faktúru
+                            </button>
+
+                            <form method="GET" action="{{ url_for('offers.download_offer', offer_id=offer.id) }}">
+                                <button type="submit" class="btn btn-outline-secondary w-100">
+                                    <i class="ti ti-download me-1"></i>
+                                    Stiahnuť ponuku
+                                </button>
+                            </form>
+
+                            <form method="POST" action="{{ url_for('offers.send_offer_email_route', offer_id=offer.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-outline-primary w-100">
+                                    <i class="ti ti-mail me-1"></i>
+                                    Odoslať e-mailom
+                                </button>
+                            </form>
+
+                            <form method="POST" action="{{ url_for('offers.mark_offer_accepted', offer_id=offer.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-outline-success w-100">
+                                    <i class="ti ti-check me-1"></i>
+                                    Označiť ako prijatú
+                                </button>
+                            </form>
+
+                            <a href="{{ url_for('offers.offers_list') }}" class="btn btn-outline-secondary">
+                                Späť na zoznam
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
 <script>
+document.addEventListener("DOMContentLoaded", function () {
     function recalculateTotals() {
         const rows = document.querySelectorAll(".item-row");
         let subtotal = 0;
@@ -164,21 +262,28 @@
             const priceInput = row.querySelector(".price-input");
             const lineTotalEl = row.querySelector(".line-total");
 
-            const qty = parseFloat(qtyInput.value) || 0;
-            const price = parseFloat(priceInput.value) || 0;
+            const qty = parseFloat(qtyInput?.value) || 0;
+            const price = parseFloat(priceInput?.value) || 0;
             const lineTotal = qty * price;
 
             subtotal += lineTotal;
-            lineTotalEl.textContent = lineTotal.toFixed(2) + " €";
+
+            if (lineTotalEl) {
+                lineTotalEl.textContent = lineTotal.toFixed(2) + " €";
+            }
         });
 
         const discountInput = document.getElementById("discount_total");
-        const discount = parseFloat(discountInput.value) || 0;
+        const discount = parseFloat(discountInput?.value) || 0;
         const total = Math.max(0, subtotal - discount);
 
-        document.getElementById("subtotal-display").textContent = subtotal.toFixed(2) + " €";
-        document.getElementById("discount-display").textContent = discount.toFixed(2) + " €";
-        document.getElementById("total-display").textContent = total.toFixed(2) + " €";
+        const subtotalDisplay = document.getElementById("subtotal-display");
+        const discountDisplay = document.getElementById("discount-display");
+        const totalDisplay = document.getElementById("total-display");
+
+        if (subtotalDisplay) subtotalDisplay.textContent = subtotal.toFixed(2) + " €";
+        if (discountDisplay) discountDisplay.textContent = discount.toFixed(2) + " €";
+        if (totalDisplay) totalDisplay.textContent = total.toFixed(2) + " €";
     }
 
     function attachRowEvents(row) {
@@ -199,36 +304,99 @@
 
     document.querySelectorAll(".item-row").forEach(attachRowEvents);
 
-    document.getElementById("discount_total").addEventListener("input", recalculateTotals);
+    const discountInput = document.getElementById("discount_total");
+    if (discountInput) {
+        discountInput.addEventListener("input", recalculateTotals);
+    }
 
-    document.getElementById("add-row-btn").addEventListener("click", function () {
-        const tbody = document.querySelector("#items-table tbody");
-        const tr = document.createElement("tr");
-        tr.classList.add("item-row");
+    const addRowBtn = document.getElementById("add-row-btn");
+    if (addRowBtn) {
+        addRowBtn.addEventListener("click", function () {
+            const tbody = document.querySelector("#items-table tbody");
+            if (!tbody) return;
 
-        tr.innerHTML = `
-            <td style="padding: 10px; border-bottom: 1px solid #eee;">
-                <input type="text" name="item_name[]" style="width: 100%; padding: 8px;" required>
-            </td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;">
-                <input type="number" step="0.01" min="0" name="item_quantity[]" class="qty-input" value="1" style="width: 100%; padding: 8px;" required>
-            </td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;">
-                <input type="number" step="0.01" min="0" name="item_unit_price[]" class="price-input" value="0" style="width: 100%; padding: 8px;" required>
-            </td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;">
-                <span class="line-total">0.00 €</span>
-            </td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;">
-                <button type="button" class="remove-row-btn">Zmazať</button>
-            </td>
-        `;
+            const tr = document.createElement("tr");
+            tr.classList.add("item-row");
 
-        tbody.appendChild(tr);
-        attachRowEvents(tr);
-        recalculateTotals();
-    });
+            tr.innerHTML = `
+                <td>
+                    <input type="text" name="item_description[]" class="form-control" required>
+                </td>
+                <td>
+                    <input type="number" step="0.01" min="0" name="item_quantity[]" class="form-control text-end qty-input" value="1" required>
+                </td>
+                <td>
+                    <input type="number" step="0.01" min="0" name="item_price_per_item[]" class="form-control text-end price-input" value="0" required>
+                </td>
+                <td class="text-end fw-semibold">
+                    <span class="line-total">0.00 €</span>
+                </td>
+                <td class="text-end">
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-row-btn">
+                        <i class="ti ti-trash"></i>
+                    </button>
+                </td>
+            `;
+
+            tbody.appendChild(tr);
+            attachRowEvents(tr);
+            recalculateTotals();
+        });
+    }
 
     recalculateTotals();
+
+    document.addEventListener("click", async function (e) {
+        const button = e.target.closest(".ai-expand-notes");
+        if (!button) return;
+
+        e.preventDefault();
+
+        const textarea = document.getElementById("notes");
+        if (!textarea) {
+            alert("Textarea #notes neexistuje.");
+            return;
+        }
+
+        const originalText = textarea.value.trim();
+        if (!originalText) {
+            alert("Najprv napíš text do poznámky.");
+            return;
+        }
+
+        const oldHtml = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = `<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>AI spracúva...`;
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
+
+        try {
+            const response = await fetch("{{ url_for('offers.ai_expand_notes') }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken,
+                },
+                body: JSON.stringify({ text: originalText })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.ok) {
+                throw new Error(data.error || "Nepodarilo sa spracovať text.");
+            }
+
+            if (data.text) {
+                textarea.value = data.text;
+            }
+        } catch (err) {
+            console.error(err);
+            alert(err.message || "AI rozpis zlyhal.");
+        } finally {
+            button.disabled = false;
+            button.innerHTML = oldHtml;
+        }
+    });
+});
 </script>
 {% endblock %}

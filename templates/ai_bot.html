@@ -1,99 +1,133 @@
 {% extends "base.html" %}
+{% block title %}AI faktúra{% endblock %}
+
 {% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+  <div>
+    <h1 class="h2 mb-1">AI faktúra</h1>
+    <div class="text-muted">
+      Napíš alebo nadiktuj údaje a AI pripraví návrh faktúry na kontrolu.
+    </div>
+  </div>
+</div>
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div class="alert alert-{{ category }} mt-2">{{ message }}</div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
-
-<h1 class="text-center">AI faktúra</h1>
-<p>"""Ahoj, prosím vystaviť faktúru.
-
-Odberateľ: Jano Novák, ferko.lizak69@gmail.com
-Mena: €
-Dátum vystavenia: 21.09.2025
-Splatnosť: 30.09.2025
-Spôsob úhrady: bank transfer
-DPH: 20 %
-
-Položky:
-- Webdesign – množstvo 2 ks, cena 500,00 € / ks
-- Hosting – množstvo 1 ks, cena 100 € / ks
-- Úpravy loga – množstvo 1 hod, cena 35,50 € / hod
-
-Poznámka: dodať prístupové údaje po úhrade.
-
---
-Ďakujem,
-Adam
-"""</p>
-
-<form method="post" id="ai-draft-form" action="{{ url_for('aibot.ai_preview') }}" class="mt-4">
+<form method="post" id="ai-draft-form" action="{{ url_for('aibot.ai_preview') }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-  <!-- Firma -->
-  <div class="mb-3">
-    <label for="company_id" class="form-label">Moja firma</label>
-    <select name="company_id" id="company_id" class="form-select" required>
-     
-      {% for c in companies %}
-        <option value="{{ c.id }}">{{ c.name }}</option>
-      {% endfor %}
-    </select>
-  </div>
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card h-100">
+        <div class="card-header">
+          <span class="fw-semibold">1. Výber firmy</span>
+        </div>
+        <div class="card-body">
+          <label for="company_id" class="form-label">Moja firma</label>
+          <select name="company_id" id="company_id" class="form-select" required>
+            {% for c in companies %}
+              <option value="{{ c.id }}">{{ c.name }}</option>
+            {% endfor %}
+          </select>
 
-  <!-- AI input -->
-  <div class="mb-3">
-    <label for="user_input" class="form-label">Text pre AI</label>
-    <textarea 
-      name="user_input" 
-      id="user_input" 
-      rows="10" 
-      class="form-control"
-      placeholder="Napríklad:
+          <div class="form-text mt-2">
+            Vyber firmu, za ktorú chceš faktúru vystaviť.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div class="card h-100">
+        <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+          <span class="fw-semibold">2. Zadanie údajov</span>
+
+          <div class="d-flex gap-2 flex-wrap">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="record-btn">
+              <i class="ti ti-microphone me-1"></i>
+              Spustiť nahrávanie
+            </button>
+
+            <button type="button" class="btn btn-outline-danger btn-sm d-none" id="stop-btn">
+              <i class="ti ti-player-stop me-1"></i>
+              Zastaviť
+            </button>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <label for="user_input" class="form-label">Text pre AI</label>
+          <textarea
+            name="user_input"
+            id="user_input"
+            rows="12"
+            class="form-control"
+            placeholder="Príklad:
 Klient: Jano Novák
 Email: jano@gmail.com
 Položky:
-- Elektroinštalácia 2x 100€
-- Materiál 50€
-DPH: 20%
-Splatnosť: 7 dní">
-    </textarea>
+- Elektroinštalácia 2x 100 €
+- Materiál 50 €
+DPH: 20 %
+Splatnosť: 7 dní"
+          ></textarea>
+
+          <div class="form-text mt-2">
+            Čím presnejšie údaje zadáš, tým menej budeš musieť opravovať návrh.
+          </div>
+
+          <div class="mt-3 p-3 bg-body-secondary rounded">
+            <div class="fw-semibold mb-2">Odporúčaný formát</div>
+            <ul class="mb-0 ps-3">
+              <li>meno klienta alebo firmy</li>
+              <li>email klienta</li>
+              <li>položky, množstvo a cena</li>
+              <li>DPH, ak sa má použiť</li>
+              <li>splatnosť alebo dátum splatnosti</li>
+            </ul>
+          </div>
+
+          <div id="recording-status" class="text-muted mt-3"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <button type="submit" class="btn btn-primary mt-3" id="generate-btn">
-  <span class="btn-text">Generovať návrh</span>
-  <span class="btn-loading d-none">
-    <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-    Generujem návrh...
-    
-  </span>
-</button>
-<div id="loading-note" class="form-text d-none">
-  Spracovanie môže trvať pár sekúnd.
-</div>
-<div class="d-flex gap-2 align-items-center mb-3">
-  <button type="button" class="btn btn-outline-secondary" id="record-btn">
-    🎤 Spustiť nahrávanie
-  </button>
+  <div class="card mt-4">
+    <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+      <div>
+        <div class="fw-semibold">3. Vygenerovanie návrhu</div>
+        <div id="loading-note" class="form-text d-none">
+          Spracovanie môže trvať pár sekúnd.
+        </div>
+      </div>
 
-  <button type="button" class="btn btn-outline-danger d-none" id="stop-btn">
-    ⏹ Zastaviť
-  </button>
+      <button type="submit" class="btn btn-primary" id="generate-btn">
+        <span class="btn-text">
+          <i class="ti ti-sparkles me-1"></i>
+          Generovať návrh
+        </span>
+        <span class="btn-loading d-none">
+          <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+          Generujem návrh...
+        </span>
+      </button>
+    </div>
   </div>
-
-  <span id="recording-status" class="text-muted"></span>
 </form>
 
 {% if ai_errors %}
-  <div class="alert alert-warning mt-4">
-    <strong>AI návrh mal chyby:</strong>
-    <pre class="mb-0">{{ ai_errors|tojson(indent=2) }}</pre>
+  <div class="card mt-4 border-warning">
+    <div class="card-header">
+      <span class="fw-semibold text-warning">AI návrh obsahoval chyby</span>
+    </div>
+    <div class="card-body">
+      <div class="text-muted mb-2">
+        Skontroluj vstup. AI pravdepodobne nedostala dosť presné údaje alebo ich nevedela správne rozpoznať.
+      </div>
+      <pre class="mb-0 small">{{ ai_errors|tojson(indent=2) }}</pre>
+    </div>
   </div>
 {% endif %}
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("ai-draft-form");
@@ -184,11 +218,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (data.text) {
         if (promptEl.value.trim()) {
-          promptEl.value = promptEl.value.trim() + "\n" + data.text.trim();
+          promptEl.value = promptEl.value.trim() + "\\n" + data.text.trim();
         } else {
           promptEl.value = data.text.trim();
         }
-        statusEl.textContent = "Hotovo.";
+        statusEl.textContent = "Prepis hotový.";
       } else {
         statusEl.textContent = "Nepodarilo sa získať text.";
       }

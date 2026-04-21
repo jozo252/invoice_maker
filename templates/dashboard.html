@@ -1,206 +1,409 @@
 {% extends "base.html" %}
 
+{% block title %}Prehľad{% endblock %}
+
 {% block content %}
-<div class="container mt-5">
-  <h2>Welcome, {{ current_user.username }} 👋</h2>
-<a href="{{ url_for('main.create_checkout_session') }}" class="btn btn-success">Získať predplatné</a>
 
-  <div class="row mt-4">
-    <div class="col-md-6">
-      <a href="{{ url_for('main.add_invoice') }}" class="btn btn-primary btn-lg w-100 mb-3">
-        ➕ Create New Invoice
-      </a>
-    </div>
-    <div class="col-md-6">
-      <a href="{{ url_for('main.list_invoices') }}" class="btn btn-outline-secondary btn-lg w-100 mb-3">
-        📄 View All Invoices
-      </a>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+  <div>
+    <h1 class="h2 mb-1">Vitaj, {{ current_user.username }} 👋</h1>
+    <div class="text-muted">
+      Najrýchlejší flow: vytvor ponuku a potom ju jedným klikom premeň na faktúru.
     </div>
   </div>
+</div>
 
-  <hr>
+{% if onboarding and not onboarding.invoice_done %}
+<div class="card border-primary mb-4">
+  <div class="card-body">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-3">
+      <div>
+        <h2 class="h4 mb-1">Začni tu</h2>
+        <div class="text-muted">
+          Dokonči základné kroky, aby si mohol vytvoriť prvú ponuku alebo faktúru.
+        </div>
+      </div>
 
-  <h4 class="mt-4">Recent Invoices</h4>
+      <div class="text-muted small">
+        {% set done_count = (1 if onboarding.company_done else 0) + (1 if onboarding.client_done else 0) + (1 if onboarding.invoice_done else 0) %}
+        Hotovo: {{ done_count }}/3
+      </div>
+    </div>
 
-<form method="get" class="row g-2 align-items-center mb-2">
-  <div class="col-auto">
-    <input type="text" class="form-control" name="q" placeholder="Hľadať číslo, klienta alebo menu" value="{{ q or '' }}">
-  </div>
-  <div class="col-auto">
-    <button class="btn btn-primary" type="submit">Find</button>
-    {% if q %}
-      <a class="btn btn-outline-secondary" href="{{ url_for('main.dashboard') }}">Reset</a>
-    {% endif %}
-  </div>
-</form>
-
-<style>
-  /* sticky header v scroll boxe */
-  .table-sticky thead th { position: sticky; top: 0; z-index: 1;
-    background-color: var(--bs-body-bg, #fff); }
-</style>
-
-{% if invoices %}
-  <div class="table-responsive" style="max-height:420px; overflow-y:auto;">
-    <table class="table table-striped table-hover mb-0 table-sticky">
-      <thead>
-        <tr>
-          <th>Invoice #</th>
-          <th>Client</th>
-          <th>Date</th>
-          <th>Total</th>
-          <th>Dátum splatnosti</th>
-          <th>Status</th>
-          <th>Akcie</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for invoice in invoices %}
-        <tr>
-          <td>{{ invoice.invoice_number }}</td>
-          <td>{{ invoice.client.name }}</td>
-          <td>{{ invoice.date.strftime('%d.%m.%Y') }}</td>
-          <td>{{ "%.2f"|format(invoice.total_cost) }} {{ invoice.currency }}</td>
-          <td>{{ invoice.due_date.strftime('%d.%m.%Y') }}</td>
-          <td>
-            {% if invoice.status == InvoiceStatus.paid %}
-              <span class="badge bg-success">Zaplatené</span>
-            {% elif invoice.is_overdue %}
-              <span class="badge bg-danger">Po splatnosti: {{ invoice.days_overdue }} dni</span>
+    <div class="d-flex flex-column gap-3">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 p-3 border rounded">
+        <div>
+          <div class="fw-semibold">
+            {% if onboarding.company_done %}
+              ✅ 1. Údaje firmy
             {% else %}
-              <span class="badge bg-warning">Splatnosť o {{ invoice.days_until_due }} dní</span>
+              1. Vyplň údaje firmy
             {% endif %}
-          </td>
-         <td class="text-nowrap">
+          </div>
+          <div class="text-muted small">
+            Bez firemných údajov nevytvoríš korektnú ponuku ani faktúru.
+          </div>
+        </div>
 
+        {% if not onboarding.company_done %}
+          <a href="{{ url_for('main.my_company') }}" class="btn btn-primary">
+            Vyplniť
+          </a>
+        {% else %}
+          <span class="badge bg-success-lt text-success">Hotovo</span>
+        {% endif %}
+      </div>
 
-          <form method="POST" action="{{ url_for('main.mark_invoice_paid', id=invoice.id) }}" style="display:inline;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-sm btn-primary">
-              <i class="ti ti-cash"></i> Zaplatená
-            </button>
-          </form>
-            <a href="{{ url_for('main.view_invoice', invoice_id=invoice.id) }}" class="btn btn-sm btn-primary">
-              <i class="ti ti-eye"></i> Zobraziť
-            </a>
-            
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 p-3 border rounded">
+        <div>
+          <div class="fw-semibold">
+            {% if onboarding.client_done %}
+              ✅ 2. Prvý klient
+            {% else %}
+              2. Pridaj prvého klienta
+            {% endif %}
+          </div>
+          <div class="text-muted small">
+            Ulož si klienta, aby si ho mohol použiť v ponuke alebo vo faktúre.
+          </div>
+        </div>
+
+        {% if onboarding.company_done and not onboarding.client_done %}
+          <a href="{{ url_for('main.add_client') }}" class="btn btn-primary">
+            Pridať klienta
+          </a>
+        {% elif onboarding.client_done %}
+          <span class="badge bg-success-lt text-success">Hotovo</span>
+        {% else %}
+          <button class="btn btn-outline-secondary" disabled>
+            Najprv firma
+          </button>
+        {% endif %}
+      </div>
+
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 p-3 border rounded">
+        <div>
+          <div class="fw-semibold">
+            {% if onboarding.invoice_done %}
+              ✅ 3. Prvá faktúra
+            {% else %}
+              3. Vytvor prvú faktúru
+            {% endif %}
+          </div>
+          <div class="text-muted small">
+            Môžeš ju vytvoriť priamo alebo z už pripravenej ponuky.
+          </div>
+        </div>
+
+        {% if onboarding.company_done and onboarding.client_done and not onboarding.invoice_done %}
+          <a href="{{ url_for('main.add_invoice') }}" class="btn btn-primary">
+            Vytvoriť faktúru
+          </a>
+        {% elif onboarding.invoice_done %}
+          <span class="badge bg-success-lt text-success">Hotovo</span>
+        {% else %}
+          <button class="btn btn-outline-secondary" disabled>
+            Dokonči predchádzajúce kroky
+          </button>
+        {% endif %}
+      </div>
+    </div>
   </div>
-{% else %}
-  <div class="text-muted">Žiadne faktúry.</div>
+</div>
 {% endif %}
 
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="mb-3">
+      <h2 class="h4 mb-1">Hlavný flow</h2>
+      <div class="text-muted">
+        Toto je najjednoduchší spôsob, ako appku používať.
+      </div>
+    </div>
 
-<h2>Status by client (last 12 months)</h2>
-<div id="statusByClientWrap">
-  <canvas id="statusByClient" width="20em" height="0em"></canvas>
-  <div id="statusByClientEmpty" style="display:none;opacity:.7">No invoices in period.</div>
+    <div class="row g-3">
+      <div class="col-12 col-lg-6">
+        <div class="card h-100 border-primary">
+          <div class="card-body">
+            <div class="text-muted small mb-2">Odporúčané</div>
+            <h3 class="h5 mb-2">1. Vytvor ponuku</h3>
+            <div class="text-muted mb-3">
+              Začni cenovou ponukou, uprav položky a po schválení ju premeň na faktúru.
+            </div>
+            <a href="{{ url_for('offers.ai_offer_page') }}" class="btn btn-primary w-100">
+              <i class="ti ti-sparkles me-1"></i>
+              Nová ponuka
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="text-muted small mb-2">Alternatíva</div>
+            <h3 class="h5 mb-2">2. Vytvor faktúru priamo</h3>
+            <div class="text-muted mb-3">
+              Ak nepotrebuješ ponuku, môžeš vytvoriť faktúru hneď.
+            </div>
+            <a href="{{ url_for('main.add_invoice') }}" class="btn btn-outline-primary w-100">
+              <i class="ti ti-file-invoice me-1"></i>
+              Nová faktúra
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <span class="fw-semibold">Rýchle akcie</span>
+      </div>
+      <div class="card-body">
+        <div class="d-grid gap-2">
+          <a href="{{ url_for('main.add_client') }}" class="btn btn-outline-secondary">
+            <i class="ti ti-user-plus me-1"></i>
+            Nový klient
+          </a>
+
+          <a href="{{ url_for('main.my_company') }}" class="btn btn-outline-secondary">
+            <i class="ti ti-building me-1"></i>
+            Moja firma
+          </a>
+
+          <a href="{{ url_for('offers.offers_list') }}" class="btn btn-outline-secondary">
+            <i class="ti ti-file-text me-1"></i>
+            Zobraziť ponuky
+          </a>
+
+          <a href="{{ url_for('main.list_invoices') }}" class="btn btn-outline-secondary">
+            <i class="ti ti-file-dollar me-1"></i>
+            Zobraziť faktúry
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <span class="fw-semibold">Ako to používať</span>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <div class="fw-semibold">Najjednoduchšia cesta</div>
+          <div class="text-muted small">
+            Firma → klient → ponuka → faktúra
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <div class="fw-semibold">Rýchla cesta</div>
+          <div class="text-muted small">
+            Firma → klient → faktúra
+          </div>
+        </div>
+
+        <div>
+          <div class="fw-semibold">Kedy použiť ponuku</div>
+          <div class="text-muted small">
+            Keď chceš najprv naceniť prácu a až potom vystaviť faktúru.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
+      <div>
+        <h2 class="h4 mb-1">Posledné faktúry</h2>
+        <div class="text-muted">Krátky prehľad poslednej aktivity.</div>
+      </div>
+
+      <form method="get" class="w-100 w-md-auto">
+        <div class="row g-2">
+          <div class="col-12 col-md-auto">
+            <input
+              type="text"
+              class="form-control"
+              name="q"
+              placeholder="Hľadať číslo, klienta alebo menu"
+              value="{{ q or '' }}"
+            >
+          </div>
+          <div class="col-12 col-md-auto d-flex gap-2">
+            <button class="btn btn-primary w-100" type="submit">Hľadať</button>
+            {% if q %}
+              <a class="btn btn-outline-secondary w-100" href="{{ url_for('main.dashboard') }}">Reset</a>
+            {% endif %}
+          </div>
+        </div>
+      </form>
+    </div>
+
+    {% if invoices %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Faktúra</th>
+              <th>Klient</th>
+              <th>Dátum</th>
+              <th>Suma</th>
+              <th>Splatnosť</th>
+              <th>Stav</th>
+              <th class="text-end">Akcie</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for invoice in invoices[:5] %}
+            <tr>
+              <td class="fw-semibold">{{ invoice.invoice_number }}</td>
+              <td>{{ invoice.client.name }}</td>
+              <td>{{ invoice.date.strftime('%d.%m.%Y') }}</td>
+              <td>{{ "%.2f"|format(invoice.total_cost) }} {{ invoice.currency }}</td>
+              <td>{{ invoice.due_date.strftime('%d.%m.%Y') }}</td>
+              <td>
+                {% if invoice.status == InvoiceStatus.paid %}
+                  <span class="badge bg-success-lt text-success">Zaplatená</span>
+                {% elif invoice.is_overdue %}
+                  <span class="badge bg-danger-lt text-danger">Po splatnosti</span>
+                {% else %}
+                  <span class="badge bg-warning-lt text-warning">Čaká na úhradu</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <a href="{{ url_for('main.view_invoice', invoice_id=invoice.id) }}" class="btn btn-sm btn-outline-primary">
+                  <i class="ti ti-eye me-1"></i>
+                  Zobraziť
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-3">
+        <a href="{{ url_for('main.list_invoices') }}" class="btn btn-outline-secondary btn-sm">
+          Zobraziť všetky faktúry
+        </a>
+      </div>
+    {% else %}
+      <div class="text-muted">Žiadne faktúry.</div>
+    {% endif %}
+  </div>
+</div>
+<div class="card mt-4">
+  <div class="card-body">
+    <div class="mb-3">
+      <h2 class="h4 mb-1">Prehľad výkonu</h2>
+      <div class="text-muted">
+        Zaplatené vs. nezaplatené faktúry podľa klientov (posledných 12 mesiacov).
+      </div>
+    </div>
+
+    <div id="statusByClientWrap" style="position: relative; min-height: 320px;">
+      <canvas id="statusByClient"></canvas>
+      <div id="statusByClientEmpty" class="text-muted" style="display:none;">
+        Za zvolené obdobie nie sú dostupné žiadne dáta.
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 (async function () {
-  const url = "{{ url_for('main.status_by_client') }}?months=12&top=8";
-  const res = await fetch(url, { credentials: 'same-origin' });
-  if (!res.ok) {
-      document.getElementById('statusByClient').style.display = 'none';
-      document.getElementById('statusByClientEmpty').textContent = 'Not authorized or session expired.';
-      document.getElementById('statusByClientEmpty').style.display = 'block';
+  const canvas = document.getElementById('statusByClient');
+  const empty = document.getElementById('statusByClientEmpty');
+
+  if (!canvas) return;
+
+  try {
+    const url = "{{ url_for('main.status_by_client') }}?months=12&top=8";
+    const res = await fetch(url, { credentials: 'same-origin' });
+
+    if (!res.ok) {
+      canvas.style.display = 'none';
+      empty.textContent = 'Nepodarilo sa načítať graf.';
+      empty.style.display = 'block';
       return;
-  }
-  let payload;
-  try { payload = await res.json(); } catch { payload = null; }
-  if (!payload || !payload.labels.length) {
-      document.getElementById('statusByClient').style.display = 'none';
-      document.getElementById('statusByClientEmpty').style.display = 'block';
+    }
+
+    const payload = await res.json();
+
+    if (!payload || !payload.labels || !payload.labels.length) {
+      canvas.style.display = 'none';
+      empty.style.display = 'block';
       return;
-  }
+    }
 
-  let { labels, datasets, currency } = payload;
+    const { labels, datasets, currency } = payload;
 
-  // ---- spočítame celkový Paid a Unpaid z datasetov ----
-  const lower = s => (s || '').toLowerCase();
-  const sum = arr => (arr || []).reduce((a, b) => a + (Number(b) || 0), 0);
-
-  const paidDS   = datasets.find(d => lower(d.label) === 'paid');
-  const unpaidDS = datasets.find(d => lower(d.label) === 'unpaid');
-
-  const totalPaid   = sum(paidDS?.data);
-  const totalUnpaid = sum(unpaidDS?.data);
-
-  // ---- pridáme jeden stĺpec "TOTAL" (append na koniec; ak chceš hore, nahraď push -> unshift) ----
-  const labelsWithTotal = [...labels, 'TOTAL'];
-  const newDatasets = datasets.map(ds => {
-    const isPaid = lower(ds.label) === 'paid';
-    const isUnpaid = lower(ds.label) === 'unpaid';
-    const extra = isPaid ? totalPaid : isUnpaid ? totalUnpaid : 0;
-
-    return {
-      ...ds,
-      // farby: Paid modrá, Unpaid červená
-      backgroundColor: isPaid ? 'rgba(54, 162, 235, 0.7)'
-                       : isUnpaid ? 'rgba(255, 99, 132, 0.7)'
-                       : ds.backgroundColor,
-      borderColor:     isPaid ? 'rgba(54, 162, 235, 1)'
-                       : isUnpaid ? 'rgba(255, 99, 132, 1)'
-                       : ds.borderColor,
-      borderWidth: 1,
-      data: [...ds.data, extra] // ak by si chcel "TOTAL" navrch, použij unshift(extra) a labels unshift('TOTAL')
-    };
-  });
-
-  const ctx = document.getElementById('statusByClient').getContext('2d');
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labelsWithTotal,
-      datasets: newDatasets
-    },
-    options: {
-      responsive: true,
-      indexAxis: 'y', // horizontálne
-      scales: {
-        x: {
-          stacked: true,
-          ticks: {
-            callback: (v) =>
-              new Intl.NumberFormat(undefined, {
-                style: 'currency',
-                currency: currency || 'EUR',
-                maximumFractionDigits: 0
-              }).format(v)
-          }
-        },
-        y: { stacked: true }
+    new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: datasets.map(ds => ({
+          ...ds,
+          label: ds.label === 'paid' ? 'Zaplatené' :
+                 ds.label === 'unpaid' ? 'Nezaplatené' : ds.label,
+          borderWidth: 1
+        }))
       },
-      plugins: {
-        legend: { position: 'bottom' },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => {
-              const val = ctx.parsed.x; // horizontálny bar
-              const cur = currency || 'EUR';
-              return `${ctx.dataset.label}: ` +
-                new Intl.NumberFormat(undefined, { style: 'currency', currency: cur }).format(val);
-            },
-            footer: (items) => {
-              const sumX = items.reduce((acc, it) => acc + it.parsed.x, 0);
-              const cur = currency || 'EUR';
-              return 'Total: ' + new Intl.NumberFormat(undefined, { style: 'currency', currency: cur }).format(sumX);
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y',
+        scales: {
+          x: {
+            stacked: true,
+            ticks: {
+              callback: (v) =>
+                new Intl.NumberFormat('sk-SK', {
+                  style: 'currency',
+                  currency: currency || 'EUR',
+                  maximumFractionDigits: 0
+                }).format(v)
+            }
+          },
+          y: { stacked: true }
+        },
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const val = ctx.parsed.x;
+                return `${ctx.dataset.label}: ` +
+                  new Intl.NumberFormat('sk-SK', {
+                    style: 'currency',
+                    currency: currency || 'EUR'
+                  }).format(val);
+              }
             }
           }
         }
       }
-    }
-  });
+    });
+
+  } catch (err) {
+    canvas.style.display = 'none';
+    empty.textContent = 'Graf sa nepodarilo načítať.';
+    empty.style.display = 'block';
+    console.error(err);
+  }
 })();
 </script>
 
 
-</div>
 {% endblock %}
-

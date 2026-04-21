@@ -1,73 +1,133 @@
 {% extends 'base.html' %}
 
-{% block title %}Pridať klienta{% endblock %}
+{% block title %}Klienti{% endblock %}
 
-{% block styles %}
-    <style>
-        .clients-list {
-            margin-top: 20px;
-        }
-        .client {
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
-    </style>
-{% endblock %}
 {% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+    <div>
+        <h1 class="h2 mb-1">Klienti</h1>
+        <div class="text-muted">Správa klientov a ich kontaktných údajov.</div>
+    </div>
 
-<h1>Klienti</h1>
+    <a href="{{ url_for('main.add_client') }}" class="btn btn-primary">
+        <i class="ti ti-user-plus me-1"></i>
+        Pridať klienta
+    </a>
+</div>
 
-<input type="text" id="clientSearch" class="form-control mb-3" placeholder="Hľadaj klienta podľa mena, IČO alebo emailu">
+<div class="card mb-4">
+    <div class="card-body">
+        <label for="clientSearch" class="form-label">Hľadať klienta</label>
+        <input
+            type="text"
+            id="clientSearch"
+            class="form-control"
+            placeholder="Meno, IČO, DIČ, email alebo telefón"
+        >
+    </div>
+</div>
 
-    
-
-    {% if clients %}
-<div class="clients-list">
+{% if clients %}
+<div id="clientsList" class="row g-3">
     {% for client in clients %}
-    <div class="client mb-4 p-3 border rounded">
-        <div class="row">
-            <!-- Left column -->
-            <div class="col-md-9">
-                <h2>{{ client.name }}</h2>
-                <p>{{ client.street }} {{ client.city }} {{ client.zip_code }}</p>
-                <p>{{ client.country }}</p>
-                <p>IČO: {{ client.ico }} | DIČ: {{ client.dic }}</p>
-                <p>Email: {{ client.email }} | Telefón: {{ client.phone }}</p>
-            </div>
+    <div class="col-12 client-card">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
+                    
+                    <div class="flex-grow-1">
+                        <h2 class="h4 mb-2 client-name">{{ client.name or 'Bez mena' }}</h2>
 
-            <!-- Right column -->
-            <div class="col-md-3 d-flex flex-column align-items-end justify-content-start">
-                <a href="{{ url_for('main.edit_client', client_id=client.id) }}" class="btn btn-primary mb-2">
-                    Upraviť
-                </a>
-                <form action="{{ url_for('main.delete_client', client_id=client.id) }}" method="POST" style="display:inline;">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-            </form>
+                        <div class="text-muted small mb-3">
+                            {{ client.ico or '' }}
+                            {% if client.ico and client.dic %} | {% endif %}
+                            {{ client.dic or '' }}
+                        </div>
 
+                        <div class="row g-2">
+                            <div class="col-12 col-md-6">
+                                <div class="small text-muted">Adresa</div>
+                                <div>
+                                    {{ client.street or '—' }}<br>
+                                    {{ client.zip_code or '' }} {{ client.city or '' }}<br>
+                                    {{ client.country or '—' }}
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <div class="small text-muted">Kontakt</div>
+                                <div>
+                                    <div>Email: {{ client.email or '—' }}</div>
+                                    <div>Telefón: {{ client.phone or '—' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex d-md-block gap-2 w-100 w-md-auto">
+                        <a href="{{ url_for('main.edit_client', client_id=client.id) }}" class="btn btn-primary w-100 mb-md-2">
+                            <i class="ti ti-edit me-1"></i>
+                            Upraviť
+                        </a>
+
+                        <form action="{{ url_for('main.delete_client', client_id=client.id) }}" method="POST" class="w-100">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-outline-danger w-100">
+                                <i class="ti ti-trash me-1"></i>
+                                Vymazať
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
             </div>
         </div>
     </div>
     {% endfor %}
 </div>
+
+<div id="noSearchResults" class="text-muted mt-3" style="display:none;">
+    Nenašiel sa žiadny klient.
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body">
+        <div class="text-muted mb-3">Zatiaľ nemáš žiadnych klientov.</div>
+        <a href="{{ url_for('main.add_client') }}" class="btn btn-primary">
+            <i class="ti ti-user-plus me-1"></i>
+            Pridať prvého klienta
+        </a>
+    </div>
+</div>
 {% endif %}
 
 <script>
-document.getElementById('clientSearch').addEventListener('input', function() {
-    const searchValue = this.value.toLowerCase();
-    const clients = document.querySelectorAll('#clientsList .client');
+document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('clientSearch');
+    const clientCards = document.querySelectorAll('#clientsList .client-card');
+    const noResults = document.getElementById('noSearchResults');
 
-    clients.forEach(client => {
-        const text = client.textContent.toLowerCase();
-        if (text.includes(searchValue)) {
-            client.style.display = '';
-        } else {
-            client.style.display = 'none';
+    if (!searchInput || !clientCards.length) return;
+
+    searchInput.addEventListener('input', function () {
+        const searchValue = this.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        clientCards.forEach(card => {
+            const text = card.textContent.toLowerCase();
+
+            if (text.includes(searchValue)) {
+                card.style.display = '';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        if (noResults) {
+            noResults.style.display = visibleCount === 0 ? 'block' : 'none';
         }
     });
 });
 </script>
-
 {% endblock %}
-

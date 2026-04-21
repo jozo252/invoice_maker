@@ -25,7 +25,6 @@
         name="invoice_number"
         class="form-control"
         value="{{ db_json.invoice_number or '' }}"
-        
       >
     </div>
 
@@ -97,22 +96,24 @@
 
   <h4 class="mt-4">Klient</h4>
   <input type="hidden" name="client_id" value="{{ client_data.id if client_data else '' }}">
+
   {% if match_type == "email" %}
-  <div class="alert alert-success">
-    Našli sme existujúceho klienta podľa emailu a údaje sme predvyplnili.
-    Pred uložením ich ešte skontrolujte.
-  </div>
-{% elif match_type == "ico" %}
-  <div class="alert alert-success">
-    Našli sme existujúceho klienta podľa IČO a údaje sme predvyplnili.
-    Pred uložením ich ešte skontrolujte.
-  </div>
-{% elif match_type == "name" %}
-  <div class="alert alert-warning">
-    Našli sme podobného klienta podľa mena a údaje sme predvyplnili.
-    Skontrolujte, či ide o správneho klienta.
-  </div>
-{% endif %}
+    <div class="alert alert-success">
+      Našli sme existujúceho klienta podľa emailu a údaje sme predvyplnili.
+      Pred uložením ich ešte skontrolujte.
+    </div>
+  {% elif match_type == "ico" %}
+    <div class="alert alert-success">
+      Našli sme existujúceho klienta podľa IČO a údaje sme predvyplnili.
+      Pred uložením ich ešte skontrolujte.
+    </div>
+  {% elif match_type == "name" %}
+    <div class="alert alert-warning">
+      Našli sme podobného klienta podľa mena a údaje sme predvyplnili.
+      Skontrolujte, či ide o správneho klienta.
+    </div>
+  {% endif %}
+
   <div class="row">
     <div class="col-md-6 mb-3">
       <label for="client_name" class="form-label">Názov / meno</label>
@@ -132,209 +133,229 @@
         id="client_ico"
         name="client_ico"
         class="form-control"
-        value="{{ client_data.ico  or '' }}"
-      >
-    </div>
-    <button type="button" class="btn btn-link p-0" data-bs-toggle="collapse" data-bs-target="#moreClientFields">
-  Zobraziť ďalšie údaje klienta
-</button>
-<div class="collapse mt-3" id="moreClientFields">
-
-
-
-    <div class="col-md-3 mb-3">
-      <label for="client_dic" class="form-label">DIČ</label>
-      <input
-        type="text"
-        id="client_dic"
-        name="client_dic"
-        class="form-control"
-        value="{{ client_data.dic or '' }}"
+        value="{{ client_data.ico or '' }}"
       >
     </div>
 
-    <div class="col-md-6 mb-3">
-      <label for="client_street" class="form-label">Ulica</label>
-      <input
-        type="text"
-        id="client_street"
-        name="client_street"
-        class="form-control"
-        value="{{ client_data.street if client_data else '' }}"
-      >
+    <div class="col-12 mb-2">
+      <button type="button" class="btn btn-link p-0" data-bs-toggle="collapse" data-bs-target="#moreClientFields">
+        Zobraziť ďalšie údaje klienta
+      </button>
     </div>
 
-    <div class="col-md-3 mb-3">
-      <label for="client_city" class="form-label">Mesto</label>
-      <input
-        type="text"
-        id="client_city"
-        name="client_city"
-        class="form-control"
-        value="{{ client_data.city if client_data else '' }}"
-      >
-    </div>
+    <div class="collapse mt-3" id="moreClientFields">
+      <div class="row">
+        <div class="col-md-3 mb-3">
+          <label for="client_dic" class="form-label">DIČ</label>
+          <input
+            type="text"
+            id="client_dic"
+            name="client_dic"
+            class="form-control"
+            value="{{ client_data.dic or '' }}"
+          >
+        </div>
 
-    <div class="col-md-3 mb-3">
-      <label for="client_zip_code" class="form-label">PSČ</label>
-      <input
-        type="text"
-        id="client_zip_code"
-        name="client_zip_code"
-        class="form-control"
-        value="{{ client_data.zip_code if client_data else '' }}"
-      >
-    </div>
+        <div class="col-md-6 mb-3">
+          <label for="client_street" class="form-label">Ulica</label>
+          <input
+            type="text"
+            id="client_street"
+            name="client_street"
+            class="form-control"
+            value="{{ client_data.street if client_data else '' }}"
+          >
+        </div>
 
-    <div class="col-md-4 mb-3">
-      <label for="client_country" class="form-label">Krajina</label>
-      <input
-        type="text"
-        id="client_country"
-        name="client_country"
-        class="form-control"
-        value="{{ client_data.country if client_data else '' }}"
-      >
-    </div>
+        <div class="col-md-3 mb-3">
+          <label for="client_city" class="form-label">Mesto</label>
+          <input
+            type="text"
+            id="client_city"
+            name="client_city"
+            class="form-control"
+            value="{{ client_data.city if client_data else '' }}"
+          >
+        </div>
 
-    <div class="col-md-4 mb-3">
-      <label for="client_email" class="form-label">Email</label>
-      <input
-        type="email"
-        id="client_email"
-        name="client_email"
-        class="form-control"
-        value="{{ client_data.email or '' }}"
-      >
-    </div>
+        <div class="col-md-3 mb-3">
+          <label for="client_zip_code" class="form-label">PSČ</label>
+          <input
+            type="text"
+            id="client_zip_code"
+            name="client_zip_code"
+            class="form-control"
+            value="{{ client_data.zip_code if client_data else '' }}"
+          >
+        </div>
 
-    <div class="col-md-4 mb-3">
-      <label for="client_phone" class="form-label">Telefón</label>
-      <input
-        type="text"
-        id="client_phone"
-        name="client_phone"
-        class="form-control"
-        value="{{ client_data.phone if client_data else '' }}"
-      >
-    </div>
+        <div class="col-md-4 mb-3">
+          <label for="client_country" class="form-label">Krajina</label>
+          <input
+            type="text"
+            id="client_country"
+            name="client_country"
+            class="form-control"
+            value="{{ client_data.country if client_data else '' }}"
+          >
+        </div>
 
-    <div class="col-md-4 mb-3">
-      <label for="client_iban" class="form-label">IBAN</label>
-      <input
-        type="text"
-        id="client_iban"
-        name="client_iban"
-        class="form-control"
-        value="{{ client_data.iban  or '' }}"
-      >
-    </div>
+        <div class="col-md-4 mb-3">
+          <label for="client_email" class="form-label">Email</label>
+          <input
+            type="email"
+            id="client_email"
+            name="client_email"
+            class="form-control"
+            value="{{ client_data.email or '' }}"
+          >
+        </div>
 
-    <div class="col-md-4 mb-3">
-      <label for="client_bic" class="form-label">BIC</label>
-      <input
-        type="text"
-        id="client_bic"
-        name="client_bic"
-        class="form-control"
-        value="{{ client_data.bic or '' }}"
-      >
-    </div>
+        <div class="col-md-4 mb-3">
+          <label for="client_phone" class="form-label">Telefón</label>
+          <input
+            type="text"
+            id="client_phone"
+            name="client_phone"
+            class="form-control"
+            value="{{ client_data.phone if client_data else '' }}"
+          >
+        </div>
 
-    <div class="col-md-4 mb-3">
-      <label for="client_ic_dph" class="form-label">IČ DPH</label>
-      <input
-        type="text"
-        id="client_ic_dph"
-        name="client_ic_dph"
-        class="form-control"
-        value="{{ client_data.ic_dph  or '' }}"
-      >
+        <div class="col-md-4 mb-3">
+          <label for="client_iban" class="form-label">IBAN</label>
+          <input
+            type="text"
+            id="client_iban"
+            name="client_iban"
+            class="form-control"
+            value="{{ client_data.iban or '' }}"
+          >
+        </div>
+
+        <div class="col-md-4 mb-3">
+          <label for="client_bic" class="form-label">BIC</label>
+          <input
+            type="text"
+            id="client_bic"
+            name="client_bic"
+            class="form-control"
+            value="{{ client_data.bic or '' }}"
+          >
+        </div>
+
+        <div class="col-md-4 mb-3">
+          <label for="client_ic_dph" class="form-label">IČ DPH</label>
+          <input
+            type="text"
+            id="client_ic_dph"
+            name="client_ic_dph"
+            class="form-control"
+            value="{{ client_data.ic_dph or '' }}"
+          >
+        </div>
+      </div>
     </div>
   </div>
-</div>
+
   <h4 class="mt-4">Položky</h4>
   <table class="table table-sm align-middle">
-   <thead>
-  <tr>
-    <th>Položka</th>
-    <th>Mj</th>
-    <th>Množstvo</th>
-    <th>Cena / ks</th>
-    <th>Spolu</th>
-  </tr>
-</thead>
+    <thead>
+      <tr>
+        <th>Položka</th>
+        <th>Mj</th>
+        <th>Množstvo</th>
+        <th>Cena / ks</th>
+        <th>Spolu</th>
+        <th></th>
+      </tr>
+    </thead>
     <tbody id="items-table-body">
-  {% for it in db_json['items'] %}
-  <tr class="item-row">
-    <td>
-      <input
-        type="text"
-        name="item_description_{{ loop.index0 }}"
-        class="form-control"
-        value="{{ it.description or '' }}"
-      >
-    </td>
-    <td>
-      <input
-        type="text"
-        name="item_unit_{{ loop.index0 }}"
-        class="form-control"
-        value="{{ it.unit or 'ks' }}"
-      >
-    </td>
-    <td>
-      <input
-        type="number"
-        step="0.01"
-        name="item_quantity_{{ loop.index0 }}"
-        class="form-control item-quantity"
-        value="{{ it.quantity if it.quantity is not none else 1 }}"
-      >
-    </td>
-    <td>
-      <input
-        type="number"
-        step="0.01"
-        name="item_price_{{ loop.index0 }}"
-        class="form-control item-price"
-        value="{{ it.price_per_item if it.price_per_item is not none else 0 }}"
-      >
-    </td>
-    
-    </td>
-    <td class="text-nowrap item-total">
-      {{ "%.2f"|format(it.total_cost or 0) }}
-    </td>
-    <td>
-    <td>
-      <button type="button" class="btn btn-sm btn-outline-danger remove-item-btn">✕</button>
-    </td>
-  </tr>
-  {% endfor %}
-  
-</tbody>
+      {% for it in db_json['items'] %}
+      <tr class="item-row">
+        <td>
+          <input
+            type="text"
+            name="item_description_{{ loop.index0 }}"
+            class="form-control"
+            value="{{ it.description or '' }}"
+          >
+        </td>
+        <td>
+          <input
+            type="text"
+            name="item_unit_{{ loop.index0 }}"
+            class="form-control"
+            value="{{ it.unit or 'ks' }}"
+          >
+        </td>
+        <td>
+          <input
+            type="number"
+            step="0.01"
+            name="item_quantity_{{ loop.index0 }}"
+            class="form-control item-quantity"
+            value="{{ it.quantity if it.quantity is not none else 1 }}"
+          >
+        </td>
+        <td>
+          <input
+            type="number"
+            step="0.01"
+            name="item_price_{{ loop.index0 }}"
+            class="form-control item-price"
+            value="{{ it.price_per_item if it.price_per_item is not none else 0 }}"
+          >
+        </td>
+        <td class="text-nowrap item-total">
+          {{ "%.2f"|format(it.total_cost or 0) }}
+        </td>
+        <td>
+          <button type="button" class="btn btn-sm btn-outline-danger remove-item-btn">✕</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
   </table>
-  
+
   <div class="mt-2">
-  <button type="button" id="add-item-btn" class="btn btn-outline-primary btn-sm">
-    + Pridať položku
-  </button>
-</div>
-<div class="mt-3" style="max-width: 320px; margin-left: auto;">
-  <div class="d-flex justify-content-between">
-    <strong>Medzisúčet:</strong>
-    <span id="subtotal-display">0.00</span>
+    <button type="button" id="add-item-btn" class="btn btn-outline-primary btn-sm">
+      + Pridať položku
+    </button>
   </div>
-  <div class="d-flex justify-content-between">
-    <strong>DPH:</strong>
-    <span id="vat-display">0.00</span>
+
+  <div class="mt-3" style="max-width: 320px; margin-left: auto;">
+    <div class="mb-2">
+      <label for="discount_total" class="form-label">Zľava</label>
+      <input
+        type="number"
+        step="0.01"
+        min="0"
+        class="form-control"
+        id="discount_total"
+        name="discount_total"
+        value="{{ db_json.discount_total or 0 }}"
+      >
+    </div>
+
+    <div class="d-flex justify-content-between">
+      <strong>Medzisúčet:</strong>
+      <span id="subtotal-display">0.00</span>
+    </div>
+    <div class="d-flex justify-content-between">
+      <strong>Základ po zľave:</strong>
+      <span id="tax-base-display">0.00</span>
+    </div>
+    <div class="d-flex justify-content-between">
+      <strong>DPH:</strong>
+      <span id="vat-display">0.00</span>
+    </div>
+    <div class="d-flex justify-content-between fs-5 mt-2">
+      <strong>Celkom:</strong>
+      <strong id="grand-total-display">0.00</strong>
+    </div>
   </div>
-  <div class="d-flex justify-content-between fs-5 mt-2">
-    <strong>Celkom:</strong>
-    <strong id="grand-total-display">0.00</strong>
-  </div>
-</div>
+
   <input type="hidden" id="items_count" name="items_count" value="{{ db_json['items']|length }}">
 
   <div class="mt-3 d-flex gap-2">
@@ -342,166 +363,179 @@
     <a href="{{ url_for('aibot.ai_bot') }}" class="btn btn-secondary">Späť</a>
   </div>
 </form>
+
 <script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const itemsTableBody = document.getElementById("items-table-body");
-    const vatRateInput = document.getElementById("vat_rate");
+document.addEventListener("DOMContentLoaded", function () {
+  const itemsTableBody = document.getElementById("items-table-body");
+  const addItemBtn = document.getElementById("add-item-btn");
+  const itemsCountInput = document.getElementById("items_count");
+  const vatRateInput = document.getElementById("vat_rate");
+  const discountInput = document.getElementById("discount_total");
 
-    const subtotalDisplay = document.getElementById("subtotal-display");
-    const vatDisplay = document.getElementById("vat-display");
-    const grandTotalDisplay = document.getElementById("grand-total-display");
+  const subtotalDisplay = document.getElementById("subtotal-display");
+  const taxBaseDisplay = document.getElementById("tax-base-display");
+  const vatDisplay = document.getElementById("vat-display");
+  const grandTotalDisplay = document.getElementById("grand-total-display");
 
-    function parseNumber(value, fallback = 0) {
-      const normalized = String(value).replace(",", ".").trim();
-      const parsed = parseFloat(normalized);
-      return Number.isFinite(parsed) ? parsed : fallback;
-    }
+  function parseNumber(value, fallback = 0) {
+    const normalized = String(value ?? "").replace(",", ".").trim();
+    const parsed = parseFloat(normalized);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
 
-    function formatMoney(value) {
-      return value.toFixed(2);
-    }
+  function formatMoney(value) {
+    return value.toFixed(2);
+  }
 
-    function recalculateRow(row) {
-      const quantityInput = row.querySelector(".item-quantity");
-      const priceInput = row.querySelector(".item-price");
-      const totalCell = row.querySelector(".item-total");
+  function updateItemsCount() {
+    const rows = itemsTableBody.querySelectorAll(".item-row");
+    itemsCountInput.value = rows.length;
+  }
 
-      const quantity = parseNumber(quantityInput?.value, 0);
-      const price = parseNumber(priceInput?.value, 0);
+  function updateRowIndexes() {
+    const rows = itemsTableBody.querySelectorAll(".item-row");
 
-      const total = quantity * price;
-      totalCell.textContent = formatMoney(total);
+    rows.forEach((row, index) => {
+      const descriptionInput = row.querySelector('[name^="item_description_"]');
+      const unitInput = row.querySelector('[name^="item_unit_"]');
+      const quantityInput = row.querySelector('[name^="item_quantity_"]');
+      const priceInput = row.querySelector('[name^="item_price_"]');
 
-      return total;
-    }
-
-    function recalculateAll() {
-      const rows = itemsTableBody.querySelectorAll(".item-row");
-
-      let subtotal = 0;
-
-      rows.forEach((row) => {
-        subtotal += recalculateRow(row);
-      });
-
-      const vatRate = parseNumber(vatRateInput?.value, 0);
-      const vatAmount = subtotal * (vatRate / 100);
-      const grandTotal = subtotal + vatAmount;
-
-      subtotalDisplay.textContent = formatMoney(subtotal);
-      vatDisplay.textContent = formatMoney(vatAmount);
-      grandTotalDisplay.textContent = formatMoney(grandTotal);
-    }
-
-    itemsTableBody.addEventListener("input", function (event) {
-      if (
-        event.target.classList.contains("item-quantity") ||
-        event.target.classList.contains("item-price")
-      ) {
-        recalculateAll();
-      }
+      if (descriptionInput) descriptionInput.name = `item_description_${index}`;
+      if (unitInput) unitInput.name = `item_unit_${index}`;
+      if (quantityInput) quantityInput.name = `item_quantity_${index}`;
+      if (priceInput) priceInput.name = `item_price_${index}`;
     });
 
-    if (vatRateInput) {
-      vatRateInput.addEventListener("input", recalculateAll);
+    updateItemsCount();
+  }
+
+  function recalculateRow(row) {
+    const quantityInput = row.querySelector(".item-quantity");
+    const priceInput = row.querySelector(".item-price");
+    const totalCell = row.querySelector(".item-total");
+
+    const quantity = parseNumber(quantityInput?.value, 0);
+    const price = parseNumber(priceInput?.value, 0);
+    const total = quantity * price;
+
+    if (totalCell) {
+      totalCell.textContent = formatMoney(total);
     }
 
-    recalculateAll();
+    return total;
+  }
+
+  function recalculateAll() {
+    const rows = itemsTableBody.querySelectorAll(".item-row");
+    let subtotal = 0;
+
+    rows.forEach((row) => {
+      subtotal += recalculateRow(row);
+    });
+
+    const discount = parseNumber(discountInput?.value, 0);
+    const vatRate = parseNumber(vatRateInput?.value, 0);
+
+    const taxBase = Math.max(0, subtotal - discount);
+    const vatAmount = taxBase * (vatRate / 100);
+    const grandTotal = taxBase + vatAmount;
+
+    subtotalDisplay.textContent = formatMoney(subtotal);
+    taxBaseDisplay.textContent = formatMoney(taxBase);
+    vatDisplay.textContent = formatMoney(vatAmount);
+    grandTotalDisplay.textContent = formatMoney(grandTotal);
+  }
+
+  function createItemRow(index) {
+    const tr = document.createElement("tr");
+    tr.classList.add("item-row");
+
+    tr.innerHTML = `
+      <td>
+        <input
+          type="text"
+          name="item_description_${index}"
+          class="form-control"
+          value=""
+        >
+      </td>
+      <td>
+        <input
+          type="text"
+          name="item_unit_${index}"
+          class="form-control"
+          value="ks"
+        >
+      </td>
+      <td>
+        <input
+          type="number"
+          step="0.01"
+          name="item_quantity_${index}"
+          class="form-control item-quantity"
+          value="1"
+        >
+      </td>
+      <td>
+        <input
+          type="number"
+          step="0.01"
+          name="item_price_${index}"
+          class="form-control item-price"
+          value="0"
+        >
+      </td>
+      <td class="text-nowrap item-total">0.00</td>
+      <td>
+        <button type="button" class="btn btn-sm btn-outline-danger remove-item-btn">✕</button>
+      </td>
+    `;
+
+    return tr;
+  }
+
+  itemsTableBody.addEventListener("input", function (event) {
+    if (
+      event.target.classList.contains("item-quantity") ||
+      event.target.classList.contains("item-price")
+    ) {
+      recalculateAll();
+    }
   });
-  document.addEventListener("DOMContentLoaded", function () {
-    const itemsTableBody = document.getElementById("items-table-body");
-    const addItemBtn = document.getElementById("add-item-btn");
-    const itemsCountInput = document.getElementById("items_count");
 
-    function updateItemsCount() {
-      const rows = itemsTableBody.querySelectorAll("tr");
-      itemsCountInput.value = rows.length;
+  itemsTableBody.addEventListener("click", function (event) {
+    if (event.target.classList.contains("remove-item-btn")) {
+      const row = event.target.closest(".item-row");
+      if (row) {
+        row.remove();
+        updateRowIndexes();
+        recalculateAll();
+      }
     }
+  });
 
-    function updateRowIndexes() {
-      const rows = itemsTableBody.querySelectorAll("tr");
-
-      rows.forEach((row, index) => {
-        const descriptionInput = row.querySelector('[name^="item_description_"]');
-        const unitInput = row.querySelector('[name^="item_unit_"]');
-        const quantityInput = row.querySelector('[name^="item_quantity_"]');
-        const priceInput = row.querySelector('[name^="item_price_"]');
-
-        if (descriptionInput) descriptionInput.name = `item_description_${index}`;
-        if (unitInput) unitInput.name = `item_unit_${index}`;
-        if (quantityInput) quantityInput.name = `item_quantity_${index}`;
-        if (priceInput) priceInput.name = `item_price_${index}`;
-      });
-
-      updateItemsCount();
-    }
-
-    function createItemRow(index) {
-  const tr = document.createElement("tr");
-  tr.classList.add("item-row");
-
-  tr.innerHTML = `
-    <td>
-      <input
-        type="text"
-        name="item_description_${index}"
-        class="form-control"
-        value=""
-      >
-    </td>
-    <td>
-      <input
-        type="text"
-        name="item_unit_${index}"
-        class="form-control"
-        value="ks"
-      >
-    </td>
-    <td>
-      <input
-        type="number"
-        step="0.01"
-        name="item_quantity_${index}"
-        class="form-control item-quantity"
-        value="1"
-      >
-    </td>
-    <td>
-      <input
-        type="number"
-        step="0.01"
-        name="item_price_${index}"
-        class="form-control item-price"
-        value="0"
-      >
-    </td>
-    
-    <td class="text-nowrap item-total">0.00</td>
-    <td class="text-nowrap"></td>
-    <td>
-      <button type="button" class="btn btn-sm btn-outline-danger remove-item-btn">✕</button>
-    </td>
-  `;
-
-  return tr;
-}
-
+  if (addItemBtn) {
     addItemBtn.addEventListener("click", function () {
-      const currentIndex = itemsTableBody.querySelectorAll("tr").length;
+      const currentIndex = itemsTableBody.querySelectorAll(".item-row").length;
       const newRow = createItemRow(currentIndex);
       itemsTableBody.appendChild(newRow);
       updateItemsCount();
+      recalculateAll();
     });
+  }
 
-    itemsTableBody.addEventListener("click", function (event) {
-      if (event.target.classList.contains("remove-item-btn")) {
-        const row = event.target.closest("tr");
-        if (row) {
-          row.remove();
-          updateRowIndexes();
-        }
-      }
-    });
-  });
+  if (vatRateInput) {
+    vatRateInput.addEventListener("input", recalculateAll);
+  }
+
+  if (discountInput) {
+    discountInput.addEventListener("input", recalculateAll);
+  }
+
+  updateItemsCount();
+  recalculateAll();
+});
 </script>
+
 {% endblock %}

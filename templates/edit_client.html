@@ -33,23 +33,23 @@
           </div>
           <div class="col-sm-8">
             <label class="form-label" for="street">Ulica <span class="text-danger">*</span></label>
-            <input class="form-control" id="street" name="street" type="text" value="{{ client.street }}" required>
+            <input class="form-control" id="street" name="street" type="text" value="{{ client.street }}">
             <div class="invalid-feedback">Zadaj ulicu.</div>
           </div>
           <div class="col-sm-4">
             <label class="form-label" for="zip">PSČ <span class="text-danger">*</span></label>
-            <input class="form-control" id="zip" name="zip" type="text" inputmode="numeric" pattern="\d{3}\s?\d{2}" placeholder="010 01" value="{{ client.zip_code }}" required>
+            <input class="form-control" id="zip" name="zip" type="text" inputmode="numeric" pattern="\d{3}\s?\d{2}" placeholder="010 01" value="{{ client.zip_code }}">
             <div class="form-text">Formát: 000 00</div>
             <div class="invalid-feedback">Zadaj PSČ v tvare 000 00.</div>
           </div>
           <div class="col-sm-6">
             <label class="form-label" for="city">Mesto <span class="text-danger">*</span></label>
-            <input class="form-control" id="city" name="city" type="text" value="{{ client.city }}" required>
+            <input class="form-control" id="city" name="city" type="text" value="{{ client.city }}" >
             <div class="invalid-feedback">Zadaj mesto.</div>
           </div>
           <div class="col-sm-6">
             <label class="form-label" for="country">Krajina <span class="text-danger">*</span></label>
-            <input class="form-control" id="country" name="country" type="text" value="{{ client.country }}" required>
+            <input class="form-control" id="country" name="country" type="text" value="{{ client.country }}" >
             <div class="invalid-feedback">Zadaj krajinu.</div>
           </div>
         </div>
@@ -90,7 +90,7 @@
           </div>
           <div class="col-md-6" id="ic-dph-wrap">
             <label class="form-label" for="ic_dph">IČ DPH</label>
-            <input class="form-control" id="ic_dph" name="ic_dph" type="text" placeholder="SK1234567890" pattern="[A-Z]{2}[0-9A-Za-z]{8,12}" value="{{ client.ic_dph }}">
+            <input class="form-control" id="ic_dph" name="ic_dph" type="text" placeholder="SK1234567890" pattern="[A-Z]{2}[0-9A-Za-z]{8,12}" value="{{ client.ic_dph or '' }}" >
             <div class="form-text">Formát napr. SK1234567890 (alebo CZ...).</div>
             <div class="invalid-feedback">Zadaj správny formát IČ DPH (kód krajiny + čísla).</div>
           </div>
@@ -110,12 +110,12 @@
         <div class="row g-3">
           <div class="col-md-6">
             <label class="form-label" for="email">Email <span class="text-danger">*</span></label>
-            <input class="form-control" id="email" name="email" type="email" value="{{ client.email }}" required>
+            <input class="form-control" id="email" name="email" type="email" value="{{ client.email }}" >
             <div class="invalid-feedback">Zadaj platný email.</div>
           </div>
           <div class="col-md-6">
             <label class="form-label" for="phone">Telefón <span class="text-danger">*</span></label>
-            <input class="form-control" id="phone" name="phone" type="tel" inputmode="tel" value="{{ client.phone }}" required>
+            <input class="form-control" id="phone" name="phone" type="tel" inputmode="tel" value="{{ client.phone }}" >
             <div class="invalid-feedback">Zadaj telefónne číslo.</div>
           </div>
         </div>
@@ -140,7 +140,7 @@
           </div>
           <div class="col-md-4">
             <label class="form-label" for="bic">BIC/SWIFT</label>
-            <input class="form-control" id="bic" name="bic" type="text" placeholder="FIOZSKBAXXX" value="{{ client.bic }}" pattern="[A-Za-z0-9]{8,11}">
+            <input class="form-control" id="bic" name="bic" type="text" placeholder="FIOZSKBAXXX" value="{{ client.bic or '' }}" pattern="[A-Za-z0-9]{8,11}">
             <div class="invalid-feedback">BIC má 8 až 11 znakov.</div>
           </div>
         </div>

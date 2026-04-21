@@ -70,6 +70,7 @@ class InvoiceModel(BaseModel):
     payment_method: PaymentMethodLiteral = "bank_transfer"
     status: InvoiceStatusLiteral = "unpaid"
     total_cost: Optional[float] = None  # spočítame z items + DPH
+    discount_total: Optional[Decimal] = Decimal("0.00")
     warnings: list[str] = []
     missing_fields: list[str] = []
 
@@ -123,14 +124,14 @@ class OfferAIItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str
-    qty: Optional[float] = None
+    quantity: Optional[float] = None
     unit: Optional[str] = None
-    unit_price: Optional[float] = None
+    price_per_item: Optional[float] = None
 
 
 class OfferAI(BaseModel):
     model_config = ConfigDict(extra="forbid")
-
+    discount_total: Optional[float] = None
     customer_name: Optional[str] = None
     customer_email: Optional[str] = None
     currency: Optional[str] = None
