@@ -217,28 +217,22 @@
                                 Vytvoriť faktúru
                             </button>
 
-                            <form method="GET" action="{{ url_for('offers.download_offer', offer_id=offer.id) }}">
-                                <button type="submit" class="btn btn-outline-secondary w-100">
+
+                                <button type="submit" class="btn btn-outline-secondary w-100" formaction="{{ url_for('offers.download_offer', offer_id=offer.id) }}" formmethod="GET">
                                     <i class="ti ti-download me-1"></i>
                                     Stiahnuť ponuku
                                 </button>
-                            </form>
 
-                            <form method="POST" action="{{ url_for('offers.send_offer_email_route', offer_id=offer.id) }}">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="btn btn-outline-primary w-100">
-                                    <i class="ti ti-mail me-1"></i>
+                                <button type="submit" class="btn btn-outline-primary w-100" formaction="{{ url_for('offers.send_offer_email_route', offer_id=offer.id) }}" formmethod="POST">
+                                     
+                                    <i class="ti ti-mail me-1"> </i>
                                     Odoslať e-mailom
                                 </button>
-                            </form>
 
-                            <form method="POST" action="{{ url_for('offers.mark_offer_accepted', offer_id=offer.id) }}">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="btn btn-outline-success w-100">
+                                <button type="submit" class="btn btn-outline-success w-100" formaction="{{ url_for('offers.mark_offer_accepted', offer_id=offer.id) }}" formmethod="POST">
                                     <i class="ti ti-check me-1"></i>
                                     Označiť ako prijatú
                                 </button>
-                            </form>
 
                             <a href="{{ url_for('offers.offers_list') }}" class="btn btn-outline-secondary">
                                 Späť na zoznam

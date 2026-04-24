@@ -236,10 +236,10 @@ def send_offer_email(offer: Offer):
 
     if not company:
         raise ValueError("Company for offer was not found.")
-    stamp_data_uri = None
+    stamp_data_uri = company.stamp_url
     if company.stamp_url:
         stamp_abs = os.path.join(
-            current_app.static_folder, 'uploads', f'stamp_{company.user_id}.png'
+            current_app.static_folder, 'uploads', f'{stamp_data_uri}'.split('/')[-1]
         )
         if os.path.exists(stamp_abs):
             mime, _ = mimetypes.guess_type(stamp_abs)
@@ -359,6 +359,7 @@ def generate_offer_from_text_route():
 
     warnings = db_ready.get("warnings") or []
     if warnings:
+        print("Validation warnings:", warnings)
         flash("Pozor: " + " | ".join(warnings), "warning")
 
     flash("Ponuka bola vytvorená.", "success")
@@ -532,7 +533,8 @@ def from_offer_to_invoice(offer_id):
     try:
         inv = InvoiceModel.model_validate(db_ready)
     except ValidationError as e:
-        flash(f"Dáta z ponuky sa nepodarilo pripraviť na faktúru. {e}", "danger" )
+        print("Validation error:", e)
+        flash(f"Dáta z ponuky sa nepodarilo pripraviť na faktúru.", "danger" )
         return redirect(url_for("offers.edit_offer", offer_id=offer.id))
 
     return render_template(
@@ -735,10 +737,10 @@ def update_offer(offer_id):
 def preview_offer(offer_id):
     offer = Offer.query.filter_by(id=offer_id, user_id=current_user.id).first_or_404()
     company = Company.query.filter_by(id=offer.company_id, user_id=current_user.id).first_or_404()
-    stamp_data_uri = None
+    stamp_data_uri = company.stamp_url
     if company.stamp_url:
         stamp_abs = os.path.join(
-            current_app.static_folder, 'uploads', f'stamp_{company.user_id}.png'
+            current_app.static_folder, 'uploads', f'{stamp_data_uri}'.split('/')[-1]
         )
         if os.path.exists(stamp_abs):
             mime, _ = mimetypes.guess_type(stamp_abs)
@@ -757,10 +759,12 @@ def preview_offer(offer_id):
 def download_offer(offer_id):
     offer = Offer.query.filter_by(id=offer_id, user_id=current_user.id).first_or_404()
     company = Company.query.filter_by(id=offer.company_id, user_id=current_user.id).first_or_404()
-    stamp_data_uri = None
+    
+    stamp_data_uri = company.stamp_url
     if company.stamp_url:
         stamp_abs = os.path.join(
-            current_app.static_folder, 'uploads', f'stamp_{company.user_id}.png'
+            current_app.static_folder, 'uploads', f'{stamp_data_uri}'.split('/')[-1]
+
         )
         if os.path.exists(stamp_abs):
             mime, _ = mimetypes.guess_type(stamp_abs)
@@ -865,7 +869,8 @@ def send_offer_email_route(offer_id):
         db.session.commit()
         flash("Ponuka byla odeslána emailem.", "success")
     except Exception as e:
-        flash(f"Chyba při odesílání emailu: {str(e)}", "danger")
+        print("Error sending email:", e)
+        flash(f"Chyba při odesílání emailu.", "danger")
 
     return redirect(url_for("offers.edit_offer", offer_id=offer.id))
 
@@ -948,3 +953,84 @@ def convert_offer_to_invoice(offer_id):
     # Uprav endpoint podľa tvojej invoice časti
     # napr. invoices.edit_invoice, main.invoice_detail, atď.
     return redirect(url_for("invoices.edit_invoice", invoice_id=invoice.id))"""
+
+
+"""
+aibot_routes.py:180:            flash("Vlož text pre AI.", "warning")
+aibot_routes.py:188:        flash("AI nenašla žádné položky. Uprav text.", "warning")
+aibot_routes.py:191:        flash("Nemáš vytvorenú firmu.", "warning")
+aibot_routes.py:196:        flash("Nemáš vytvoreného klienta. AI sa pokúsi ho vytvoriť podľa textu.", "info")
+aibot_routes.py:213:        flash("Nájdený existujúci klient: " + client_ok.name, "success")
+aibot_routes.py:282:        flash(f"Zle vyplneny formulár.", "danger")
+aibot_routes.py:342:        flash("Chýbajú dáta na potvrdenie.", "danger")
+aibot_routes.py:348:        flash("Neplatný JSON náhľadu.", "danger")
+aibot_routes.py:356:        flash("Nemáš vytvorenú firmu.", "danger")
+aibot_routes.py:373:        flash("DPH musí byť číslo.", "danger")
+aibot_routes.py:406:        flash(
+aibot_routes.py:482:            flash(f"Položka {i+1}: množstvo musí byť číslo.", "danger")
+aibot_routes.py:488:            flash(f"Položka {i+1}: cena musí byť číslo.", "danger")
+aibot_routes.py:502:        flash("Faktúra musí obsahovať aspoň jednu položku.", "danger")
+aibot_routes.py:531:        flash("Chýba číslo faktúry.", "danger")
+aibot_routes.py:547:        flash("Toto číslo faktúry už používaš. Zvoľ iné.", "danger")
+aibot_routes.py:564:        flash(f"Chyba pri ukladaní: {e}", "danger")
+offers.py:302:        flash("Popis dopytu je povinný.", "danger")
+offers.py:327:        flash("Vlož text pre AI.", "warning")
+offers.py:331:        flash("Vyber firmu.", "warning")
+offers.py:342:        flash("AI výstup sa nepodarilo spracovať.", "danger")
+offers.py:352:        flash("AI nenašla žiadne položky pre ponuku.", "warning")
+offers.py:363:        flash("Pozor: " + " | ".join(warnings), "warning")
+offers.py:365:    flash("Ponuka bola vytvorená.", "success")
+offers.py:375:        flash("Najprv si vytvor firmu.", "warning")
+offers.py:395:        flash("AI výstup sa nepodarilo spracovať.", "danger")
+offers.py:434:        flash("Pozor: " + " | ".join(warnings), "warning")
+offers.py:436:    flash("Návrh ponuky bol vytvorený.", "success")
+offers.py:446:        flash("Ponuka nemá žiadne položky.", "danger")
+offers.py:465:        flash("Nemáš vytvorenú firmu.", "warning")
+offers.py:469:        flash("Ponuka nemá žiadne položky.", "warning")
+offers.py:537:        flash(f"Dáta z ponuky sa nepodarilo pripraviť na faktúru.", "danger" )
+offers.py:563:        flash("Vlož text pre AI.", "warning")
+offers.py:572:        flash("Vyber platnú firmu.", "warning")
+offers.py:582:        flash("AI výstup sa nepodarilo spracovať.", "danger")
+offers.py:614:        flash("Firma neexistuje.", "danger")
+offers.py:657:        flash("Ponuka musí mať aspoň jednu položku.", "warning")
+offers.py:692:    flash("Ponuka bola vytvorená.", "success")
+offers.py:716:        flash("Ponuka musí obsahovať aspoň jednu položku.", "danger")
+offers.py:731:    flash("Ponuka bola uložená.", "success")
+offers.py:790:        flash("Chýba firma.", "danger")
+offers.py:859:    flash("Ponuka bola uložená.", "success")
+offers.py:870:        flash("Ponuka byla odeslána emailem.", "success")
+offers.py:873:        flash(f"Chyba při odesílání emailu.", "danger")
+offers.py:883:    flash(f"Ponuka {offer.id} bola označená ako prijatá.", "success")
+offers.py:912:        flash("Ponuka nemá žiadne položky.", "danger")
+offers.py:951:    flash("Faktúra bola vytvorená z ponuky.", "success")
+routes.py:219:            flash('Používateľ s týmto emailom alebo menom už existuje.', 'danger')
+routes.py:222:        flash('Registrácia prebehla úspešne!', 'success')
+routes.py:257:    flash('Bol si odhlásený.', 'info')
+routes.py:421:        flash(result, 'success')
+routes.py:423:        flash(f'Chyba při odesílání emailu: {str(e)}', 'danger')
+routes.py:707:                flash("Súbor nemá príponu.", "danger")
+routes.py:713:                flash("Nepovolený formát obrázka (použi PNG/JPG/WEBP).", "danger")
+routes.py:731:                flash("Súbor neviem spracovať ako obrázok.", "danger")
+routes.py:737:        flash("Údaje o firme boli úspešne uložené.", "success")
+routes.py:750:    flash(f"Faktúra {invoice.invoice_number} bola označená ako zaplatená.", "success")
+routes.py:758:        flash(f"Faktúra {invoice.invoice_number} je už zaplatená a nemôže byť označená ako oneskorená.", "warning")
+routes.py:761:        flash(f"Faktúra {invoice.invoice_number} ešte nie je po termíne splatnosti.", "warning")
+routes.py:766:    flash(f"Faktúra {invoice.invoice_number} bola označená ako oneskorená.", "success")
+routes.py:793:            flash('Vyplň číslo faktúry (alebo si sprav autogeneráciu).', 'danger')
+routes.py:803:            flash('Toto číslo faktúry už používaš. Zvoľ iné.', 'danger')
+routes.py:811:            flash('Vyber klienta a firmu.', 'danger')
+routes.py:853:            flash('Pridaj aspoň jednu platnú položku.', 'danger')
+routes.py:861:            flash('Dátum alebo splatnosť sú neplatné.', 'danger')
+routes.py:912:            flash('Toto číslo faktúry už používaš (DB). Zvoľ iné.', 'danger')
+routes.py:930:            flash('Email odoslaný!', 'success')
+routes.py:933:            flash(f'Chyba pri odosielaní emailu: {str(e)}', 'danger')
+routes.py:1017:        flash("Faktúru možno upravovať len v stave 'draft'.", "warning")
+routes.py:1032:            flash("Neplatná DPH sadzba.", "danger")
+routes.py:1038:            flash("Klient nie je priradený.", "danger")
+routes.py:1070:                flash(f"Neplatná položka {i}.", "danger")
+routes.py:1089:            flash("Žiadne platné položky neboli odoslané.", "danger")
+routes.py:1099:            flash("Faktúra bola upravená.", "success")
+routes.py:1103:            flash("Chyba pri ukladaní. Skontroluj duplicitu čísla faktúry a formát dát.", "danger")
+routes.py:1157:        flash("Potrebujete aktívne predplatné pre AI funkciu.", "danger")
+
+"""

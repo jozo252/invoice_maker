@@ -115,8 +115,9 @@
         <div class="col-md-4">
           <label class="form-label" for="is_vat_payer">Platiteľ DPH</label>
           <select class="form-select" id="is_vat_payer" name="is_vat_payer">
-            <option value="True" {% if company and company.is_vat_payer %}selected{% endif %}>Áno</option>
             <option value="False" {% if company and not company.is_vat_payer %}selected{% endif %}>Nie</option>
+            <option value="True" {% if company and company.is_vat_payer %}selected{% endif %}>Áno</option>
+            
           </select>
         </div>
 

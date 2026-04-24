@@ -203,15 +203,22 @@ def cancel():
 @main.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegistrationForm()
+
     if form.validate_on_submit():
         user = User(
-            username=form.username.data,
-            email=form.email.data
+            username=form.username.data.strip(),
+            email=form.email.data.lower().strip()
         )
         user.set_password(form.password.data)
 
-        db.session.add(user)
-        db.session.commit()
+        try:
+            db.session.add(user)
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            flash('Používateľ s týmto emailom alebo menom už existuje.', 'danger')
+            return render_template('register.html', form=form)
+
         flash('Registrácia prebehla úspešne!', 'success')
         return redirect(url_for('main.login'))
 
@@ -228,7 +235,7 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         print("Form validated")
-        user = User.query.filter_by(email=form.email.data).first()
+        user = User.query.filter_by(email=form.email.data.lower().strip()).first()
         
         if user and check_password_hash(user.password_hash, form.password.data):
             login_user(user)
@@ -379,10 +386,10 @@ def download_invoice(invoice_id):
             amount_eur=amount_for_qr,
             text=f"Invoice {invoice.invoice_number}"
         )
-    stamp_data_uri = None
+    stamp_data_uri = invoice.company.stamp_url if invoice.company and invoice.company.stamp_url else None
     if invoice.company:
         stamp_abs = os.path.join(
-            current_app.static_folder, 'uploads', f'stamp_{invoice.company.user_id}.png'
+            current_app.static_folder, 'uploads', f'{stamp_data_uri}'.split('/')[-1]
         )
         if os.path.exists(stamp_abs):
             mime, _ = mimetypes.guess_type(stamp_abs)
@@ -411,9 +418,11 @@ def send_invoice_email_route(invoice_id):
     invoice = Invoice.query.filter_by(id=invoice_id, user_id=current_user.id).first_or_404()
     try:
         result = send_invoice_email(invoice, attachment_file=request.files.get("attachment"))
-        flash(result, 'success')
+        print(result)
+        flash("Operácia prebehla úspešne.", "success")
     except Exception as e:
-        flash(f'Chyba při odesílání emailu: {str(e)}', 'danger')
+        print(f"ERROR sending email: {str(e)}")
+        flash(f"Chyba pri odosielaní emailu.", "danger")
 
     return redirect(url_for('main.view_invoice', invoice_id=invoice_id))
 
@@ -438,10 +447,10 @@ def send_invoice_email(invoice,attachment_file=None):
             amount_eur=amount_for_qr,
             text=f"Invoice {invoice.invoice_number}"
         )
-    stamp_data_uri = None
+    stamp_data_uri = invoice.company.stamp_url if invoice.company and invoice.company.stamp_url else None
     if invoice.company:
         stamp_abs = os.path.join(
-            current_app.static_folder, 'uploads', f'stamp_{invoice.company.user_id}.png'
+            current_app.static_folder, 'uploads', f'{stamp_data_uri}'.split('/')[-1]
         )
         if os.path.exists(stamp_abs):
             mime, _ = mimetypes.guess_type(stamp_abs)

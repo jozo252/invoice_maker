@@ -99,7 +99,7 @@ class Invoice(db.Model):
         company= db.relationship('Company', backref=db.backref('invoices', lazy=True))
         client = db.relationship('Client', backref=db.backref('invoices', lazy=True))
         items = db.relationship("InvoiceItem", back_populates="invoice", cascade="all, delete-orphan")
-        created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))  # Timestamp when the invoice was created
+        created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))        
         status = db.Column(db.Enum(InvoiceStatus, name="invoicestatus",
                            native_enum=False, validate_strings=True), nullable=False, default=InvoiceStatus.unpaid)
         discount_total = db.Column(db.Numeric(10, 2), nullable=False, default=0)
@@ -172,7 +172,7 @@ class Lead(db.Model):
 
     status = db.Column(db.String(50), default="new")  # new / quoted / closed
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 class Offer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -193,4 +193,4 @@ class Offer(db.Model):
 
     status = db.Column(db.String(50), default="draft")  # draft / sent / accepted
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))

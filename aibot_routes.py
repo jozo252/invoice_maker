@@ -206,6 +206,7 @@ def ai_preview():
         "phone": ai_raw.get("customer_phone", ""),
         "iban": ai_raw.get("customer_iban", ""),
         "ic_dph": ai_raw.get("customer_ic_dph", ""),
+        "bic": ai_raw.get("customer_bic", ""),
     }
         
 
@@ -387,6 +388,7 @@ def ai_confirm():
     client_phone = (request.form.get("client_phone") or "").strip()
     client_iban = (request.form.get("client_iban") or "").strip()
     client_ic_dph = (request.form.get("client_ic_dph") or "").strip()
+    client_bic = (request.form.get("client_bic") or "").strip()
 
     # minimálna validácia klienta
     required_client_fields = {
@@ -438,7 +440,8 @@ def ai_confirm():
         client.email = client_email
         client.phone = client_phone
         client.iban = client_iban
-        client.ic_dph = client_ic_dph or None
+        client.ic_dph = client_ic_dph
+        client.bic = client_bic 
     else:
         client = Client(
             name=client_name,
@@ -452,7 +455,8 @@ def ai_confirm():
             email=client_email,
             phone=client_phone,
             iban=client_iban,
-            ic_dph=client_ic_dph or None,
+            ic_dph=client_ic_dph,
+            bic=client_bic
         )
         db.session.add(client)
         db.session.flush()
@@ -561,7 +565,8 @@ def ai_confirm():
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        flash(f"Chyba pri ukladaní: {e}", "danger")
+        print("ERROR saving invoice:", e)
+        flash(f"Chyba pri ukladaní", "danger")
         return redirect(url_for("aibot.ai_bot"))
 
     return redirect(url_for("main.view_invoice", invoice_id=invoice_id))

@@ -9,29 +9,6 @@
   {% endif %}
 {% endwith %}
 
-
-python3 - <<'PY'
-import sqlite3, os
-
-for path in ["app.db", "instance/invoices.db", "backupdatabase.db"]:
-    if os.path.exists(path):
-        print(f"\n=== {path} ===")
-        conn = sqlite3.connect(path)
-        cur = conn.cursor()
-        try:
-            cur.execute("PRAGMA table_info(invoices)")
-            cols = [r[1] for r in cur.fetchall()]
-            print(cols)
-            print("HAS discount_total:", "discount_total" in cols)
-        except Exception as e:
-            print("ERROR:", e)
-        finally:
-            conn.close()
-PY
-
-
-
-
 <h2>Náhľad faktúry (AI)</h2>
 
 <form method="post" action="{{ url_for('aibot.ai_confirm') }}">
@@ -263,7 +240,7 @@ PY
             id="client_bic"
             name="client_bic"
             class="form-control"
-            value="{{ client_data.bic or '' }}"
+            value="{{ client_data.bic if client_data else '' }}"
           >
         </div>
 
@@ -274,7 +251,7 @@ PY
             id="client_ic_dph"
             name="client_ic_dph"
             class="form-control"
-            value="{{ client_data.ic_dph or '' }}"
+            value="{{ client_data.ic_dph if client_data else '' }}"
           >
         </div>
       </div>
