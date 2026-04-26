@@ -10,7 +10,10 @@
       <h2 class="h3 mb-1">Pridať klienta</h2>
       <p class="text-secondary mb-0">Údaje sa budú používať pri vystavovaní faktúr.</p>
     </div>
-    <a href="{{ url_for('main.list_clients') if url_for else '#' }}" class="btn btn-link d-none d-md-inline">← Späť na klientov</a>
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+    <i class="ti ti-arrow-left me-1"></i>
+    Späť na prehľad
+  </a>
   </div>
 
   <form method="POST" class="needs-validation" novalidate>
