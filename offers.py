@@ -265,6 +265,8 @@ def send_offer_email(offer: Offer):
     msg = Message(
         subject=f"Cenová ponuka {offer.id}",
         recipients=[offer.customer_email],
+        sender=current_app.config['MAIL_DEFAULT_SENDER'],
+        reply_to=company.email if company.email else None,
         body=body,
     )
     with open(pdf_path, "rb") as f:

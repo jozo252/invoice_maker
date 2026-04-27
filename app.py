@@ -33,17 +33,18 @@ def create_app():
     
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///invoices.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-    app.config['MAIL_PORT'] = 587
-    app.config['MAIL_USE_TLS'] = True
-    app.config['MAIL_USERNAME'] = 'adamgallik11@gmail.com'
+    app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
+    app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT'))
+    app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS').lower() == 'true'
+    app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
     app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
-    app.config['MAIL_DEFAULT_SENDER'] = 'adamgallik11@gmail.com'
+    app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')  # ✅ správne napísané
     app.config["STRIPE_WEBHOOK_SECRET"] = os.getenv("STRIPE_WEBHOOK_SECRET")
     app.config["STRIPE_API_KEY"] = os.getenv("STRIPE_API_KEY")
     app.config["STRIPE_PUBLIC_KEY"] = os.getenv("STRIPE_PUBLIC_KEY")
     app.config["STRIPE_PRICE_ID"] = os.getenv("STRIPE_PRICE_ID")
+    app.config["STRIPE_PRODUCT_ID"] = os.getenv("STRIPE_PRODUCT_ID")
     app.config["SUCCESS_URL"] = os.getenv("SUCCESS_URL")    
     app.config["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
     app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024

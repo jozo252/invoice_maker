@@ -26,6 +26,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from PIL import Image
 import base64
 import mimetypes
+from email_utils import send_email_offer
 
 
 
@@ -111,9 +112,6 @@ def stripe_webhook():
     sig_header = request.headers.get("Stripe-Signature", "")
     endpoint_secret = current_app.config["STRIPE_WEBHOOK_SECRET"]
     
-
-    
-
     if not endpoint_secret:
         return 'Webhook secret missing', 500
 
@@ -146,10 +144,6 @@ def stripe_webhook():
             print("❌ Metadata missing user_id.")
     
     return '', 200
-
-
-
-
 
 
 @main.route('/create-checkout-session')
@@ -427,7 +421,7 @@ def send_invoice_email_route(invoice_id):
     return redirect(url_for('main.view_invoice', invoice_id=invoice_id))
 
 
-def send_invoice_email(invoice,attachment_file=None):
+def send_invoice_email(invoice,attachment_file=None,reply_to=None):
 
     # compute amount (same as view_invoice)
     base = Decimal(str(invoice.total_cost or 0))
@@ -481,7 +475,9 @@ def send_invoice_email(invoice,attachment_file=None):
             temp_attachment_path, original_attachment_name = save_temp_attachment(attachment_file)
         msg = Message(
             subject=f"Faktúra č. {invoice.invoice_number}",
-            recipients=[invoice.client.email],  # ← Reálne použitie
+            recipients=[invoice.client.email], 
+            sender=current_app.config['MAIL_DEFAULT_SENDER'],
+            reply_to=invoice.company.email if invoice.company and invoice.company.email else None,  # ← Reálne použitie
             body=f"Dobrý deň,\n\nV prílohe vám posielam  faktúru {invoice.invoice_number}."
         )
 
@@ -1175,6 +1171,18 @@ def delete_invoice(invoice_id):
     db.session.commit()
     return redirect(url_for('main.list_invoices'))
 
+
+@main.route("/test_email")
+def test_email():
+    try:
+        send_email_offer(
+            to_email="noreply@invoicemakerai.com",
+            subject="Testovací email z Invoice Maker AI",
+            body="Toto je testovací email pro ověření funkčnosti odesílání emailů z Invoice Maker AI.",
+        )
+        return "Testovací email byl úspěšně odeslán."
+    except Exception as e:
+        return f"Chyba při odesílání testovacího emailu: {str(e)}"
 
 
 
