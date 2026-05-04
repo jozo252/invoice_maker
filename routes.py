@@ -294,9 +294,9 @@ def dashboard():
 @main.route('/status-by-client')
 @login_required
 def status_by_client():
-    months = int(request.args.get("months", 12))
     top_n = int(request.args.get("top", 8))
-    since = date.today() - timedelta(days=30 * months)
+    since = date(date.today().year, 1, 1)
+    next_year_start = date(date.today().year + 1, 1, 1)
 
     # Sum per client & status
     rows = (
@@ -310,7 +310,8 @@ def status_by_client():
         )
         .filter(
             Invoice.user_id == current_user.id,
-            Invoice.date >= since
+            Invoice.date >= since,
+            Invoice.date < next_year_start
         )
         .group_by(Client.id, Client.name, Invoice.status)
         .all()

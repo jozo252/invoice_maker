@@ -14,7 +14,7 @@ from datetime import date
 from models import User, Invoice, InvoiceItem, Client, Company, PaymentMethod, InvoiceStatus
 from extensions import db
 
-from ai import call_llm_extract
+from ai import call_llm_extract, generate_reply
 from pydantic_models import InvoiceModel, InvoiceAI
 from normalize_ai import normalize_ai_payload
 from ai import create_invoice_from_model, transcribe_ai  # alebo importni odkiaľ ju máš
@@ -570,6 +570,22 @@ def ai_confirm():
         return redirect(url_for("aibot.ai_bot"))
 
     return redirect(url_for("main.view_invoice", invoice_id=invoice_id))
+
+
+@aibot.route("/replybot", methods=["GET"])
+@login_required
+def replybot():
+    return render_template("replybot.html")
+
+@aibot.route("/generate-reply", methods=["POST"])
+def generate_reply_route():
+    user_input = request.form.get("input")
+    if not user_input:
+        return jsonify({"error": "Chýbá vstup pro generování odpovědi."}), 400
+    reply = generate_reply(user_input)
+
+    return jsonify({"reply": reply})
+
 
 
 """Ahoj, prosím vystaviť faktúru.

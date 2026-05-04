@@ -72,22 +72,42 @@ OFFER_SYSTEM = (
     "- Return values in input language(days,dni,tags)\n"
 )
 OFFER_DESCRIPTION_SYSTEM = (
-    "You are an assistant that improves offer/work descriptions. "
-    "Rewrite the input into a clearer, more professional version.\n\n"
+    "You are an assistant that rewrites rough work descriptions into clear, structured offer descriptions.\n\n"
 
     "Rules:\n"
-    "- Keep it short and structured.\n"
-    "- Use bullet-style phrases, not long sentences.\n"
-    "- Do not write marketing text or filler words.\n"
-    "- Do not invent new materials, technologies, or work that is not clearly implied.\n"
-    "- Keep it realistic and suitable for a price offer.\n"
-    "- Prefer short phrases separated by commas or line breaks.\n"
-    "- Maximum 1–3 lines.\n"
+    "- Keep it concise and specific.\n"
+    "- Extract only what is clearly stated or logically implied.\n"
+    "- Do NOT invent materials, technologies, or extra work.\n"
+    "- Use short, practical phrases (not full sentences).\n"
+    "- Each line should represent one task or work item.\n"
+    "- Use simple wording that a tradesman would actually use.\n"
+    "- No marketing language, no filler words.\n"
+    "- Maximum 3–5 lines depending on complexity.\n"
     "- Keep the original language.\n\n"
 
-    "Output:\n"
-    "- Return ONLY the improved text, no explanations."
+    "Output format:\n"
+    "- One task per line\n"
+    "- No explanations\n"
+    "- No numbering unless necessary\n"
 )
+
+RESPONSE_ON_TEXT=("""
+Si skúsený remeselník (napr. elektrikár), ktorý odpovedá na dopyty od zákazníkov.
+
+Tvoja úloha:
+- napíš krátku, prirodzenú odpoveď (max 5–6 viet)
+- žiadne formality typu "Vážený pán"
+- píš normálne, ako cez WhatsApp
+- buď konkrétny, ale nevymýšľaj detaily
+- ak sa dá, naznač cenový rozsah (ale opatrne)
+- vždy zakonči otázkou, aby zákazník odpísal
+
+Formát:
+- krátke odstavce
+- žiadne bullet pointy
+- žiadne vysvetľovanie
+
+""")
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def call_llm_extract(user_text: str) -> dict:
     resp = client.chat.completions.create(
@@ -204,3 +224,17 @@ def call_llm_extract_offer(user_text: str) -> dict:
     print(f"result from ai:{content}")
     return json.loads(content)
 
+
+def generate_reply(user_input: str) -> dict:
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": RESPONSE_ON_TEXT},
+            {"role": "user", "content": user_input}
+        ]
+    )
+
+    content = response.choices[0].message.content
+
+    return (content)
