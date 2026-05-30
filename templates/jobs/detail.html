@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header d-print-none">
+    <div class="container-xl">
+        <div class="row g-2 align-items-center">
+            <div class="col">
+                <h2 class="page-title">
+                    {{ job.title }}
+                </h2>
+                <div class="text-muted mt-1">
+                    Detail zákazky
+                </div>
+            </div>
+
+            <div class="col-auto ms-auto d-print-none">
+                <a href="{{ url_for('jobs.jobs_list') }}" class="btn btn-outline-secondary">
+                    Späť na zákazky
+                </a>
+
+                {# Toto napojíš neskôr #}
+                {#
+                <a href="{{ url_for('offers.generate_offer_from_job', job_id=job.id) }}" class="btn btn-primary">
+                    Vytvoriť ponuku
+                </a>
+                #}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page-body">
+    <div class="container-xl">
+
+        
+
+        <div class="row row-cards">
+
+            <div class="col-md-8">
+
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">Informácie o zákazke</h3>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+
+                            {% if job.status == "new" %}
+                                <span class="badge bg-blue-lt">Nová</span>
+                            {% elif job.status == "inspection" %}
+                                <span class="badge bg-yellow-lt">Obhliadka</span>
+                            {% elif job.status == "offer_sent" %}
+                                <span class="badge bg-purple-lt">Ponuka</span>
+                            {% elif job.status == "approved" %}
+                                <span class="badge bg-green-lt">Schválená</span>
+                            {% elif job.status == "done" %}
+                                <span class="badge bg-teal-lt">Hotová</span>
+                            {% elif job.status == "invoiced" %}
+                                <span class="badge bg-success-lt">Fakturovaná</span>
+                            {% elif job.status == "cancelled" %}
+                                <span class="badge bg-red-lt">Zrušená</span>
+                            {% else %}
+                                <span class="badge bg-secondary-lt">{{ job.status }}</span>
+                            {% endif %}
+                        </div>
+                        <form method="POST" action="{{ url_for('jobs.job_update_status', job_id=job.id) }}" class="mt-2">
+    {% if csrf_token %}
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% endif %}
+
+    <div class="input-group">
+        <select name="status" class="form-select">
+            <option value="new" {% if job.status == "new" %}selected{% endif %}>Nová</option>
+            <option value="inspection" {% if job.status == "inspection" %}selected{% endif %}>Obhliadka</option>
+            <option value="offer_sent" {% if job.status == "offer_sent" %}selected{% endif %}>Ponuka odoslaná</option>
+            <option value="approved" {% if job.status == "approved" %}selected{% endif %}>Schválená</option>
+            <option value="done" {% if job.status == "done" %}selected{% endif %}>Hotová</option>
+            <option value="invoiced" {% if job.status == "invoiced" %}selected{% endif %}>Fakturovaná</option>
+            <option value="cancelled" {% if job.status == "cancelled" %}selected{% endif %}>Zrušená</option>
+        </select>
+
+        <button class="btn btn-outline-primary" type="submit">
+            Uložiť
+        </button>
+    </div>
+</form>
+
+                        <div class="mb-3">
+                            <label class="form-label">Klient</label>
+                            {% if job.client %}
+                                <div>
+                                    <strong>{{ job.client.name }}</strong>
+                                    {% if job.client.email %}
+                                        <div class="text-muted">{{ job.client.email }}</div>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted">Bez klienta</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Popis</label>
+                            {% if job.description %}
+                                <p>{{ job.description }}</p>
+                            {% else %}
+                                <p class="text-muted">Bez popisu.</p>
+                            {% endif %}
+                        </div>
+
+                        <div class="text-muted small">
+                            Vytvorené:
+                            {{ job.created_at.strftime("%d.%m.%Y %H:%M") if job.created_at else "-" }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">Pridať poznámku</h3>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('jobs.job_add_note', job_id=job.id) }}">
+                        <div class="card-body">
+
+                            {% if csrf_token %}
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            {% endif %}
+
+                            <div class="mb-3">
+                                <label class="form-label">Typ poznámky</label>
+                                <select name="note_type" class="form-select">
+                                    <option value="text">Poznámka</option>
+                                    <option value="inspection">Obhliadka</option>
+                                    <option value="material">Materiál</option>
+                                    <option value="task">Úloha</option>
+                                    <option value="ai">AI výstup</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Text poznámky</label>
+                                <textarea 
+                                    name="content" 
+                                    class="form-control" 
+                                    rows="5"
+                                    placeholder="Napr. zákazník chce prerobiť rozvádzač, doplniť zásuvky v kuchyni, pripraviť prívod na indukciu..."
+                                    required
+                                ></textarea>
+                            </div>
+                        </div>
+
+                        <div class="card-footer text-end">
+                            <button type="submit" class="btn btn-primary">
+                                Pridať poznámku
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Poznámky</h3>
+                    </div>
+
+                    <div class="card-body">
+                        {% for note in job.notes|sort(attribute='created_at', reverse=True) %}
+                            <div class="mb-3 pb-3 border-bottom">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        {% if note.note_type == "text" %}
+                                            <span class="badge bg-blue-lt">Poznámka</span>
+                                        {% elif note.note_type == "inspection" %}
+                                            <span class="badge bg-yellow-lt">Obhliadka</span>
+                                        {% elif note.note_type == "material" %}
+                                            <span class="badge bg-purple-lt">Materiál</span>
+                                        {% elif note.note_type == "task" %}
+                                            <span class="badge bg-green-lt">Úloha</span>
+                                        {% elif note.note_type == "ai" %}
+                                            <span class="badge bg-indigo-lt">AI</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary-lt">{{ note.note_type }}</span>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="text-muted small">
+                                        {{ note.created_at.strftime("%d.%m.%Y %H:%M") if note.created_at else "-" }}
+                                    </div>
+                                </div>
+
+                                <div class="mt-2">
+                                    {{ note.content }}
+                                </div>
+
+                                <form method="POST" action="{{ url_for('jobs.job_delete_note', job_id=job.id, note_id=note.id) }}" class="mt-2">
+                                {% if csrf_token %}
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                {% endif %}
+
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    Odstrániť
+                                </button>
+                            </form>
+                            <a href="{{ url_for('jobs.job_edit_note', job_id=job.id, note_id=note.id) }}" class="btn btn-sm btn-outline-primary mt-2">
+                                Upraviť
+                            </a>
+                            </div>
+                        {% else %}
+                            <p class="text-muted mb-0">
+                                Zatiaľ nemáš žiadne poznámky k tejto zákazke.
+                            </p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="col-md-4">
+
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">Prílohy a fotky</h3>
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data" action="{{ url_for('jobs.job_add_attachment', job_id=job.id) }}">
+                        <div class="card-body">
+
+                            {% if csrf_token %}
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            {% endif %}
+
+                            <div class="mb-3">
+                                <label class="form-label">Nahrať súbor</label>
+                                <input type="file" name="file" class="form-control" accept=".jpg,.jpeg,.png,.webp,.pdf">
+                                <small class="form-hint">
+                                    Povolené: JPG, PNG, WEBP, PDF.
+                                </small>
+                            </div>
+
+                        </div>
+
+                        <div class="card-footer text-end">
+                            <button type="submit" class="btn btn-outline-primary">
+                                Nahrať prílohu
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">Nahrané súbory</h3>
+                    </div>
+
+                    <div class="card-body">
+                        {% for attachment in job.attachments|sort(attribute='created_at', reverse=True) %}
+                            <div class="mb-3 pb-3 border-bottom">
+
+                                {% if attachment.file_type in ["jpg", "jpeg", "png", "webp"] %}
+                                    <a href="{{ url_for('static', filename=attachment.file_path) }}" target="_blank">
+                                        <img 
+                                            src="{{ url_for('static', filename=attachment.file_path) }}" 
+                                            class="img-fluid rounded mb-2"
+                                            alt="{{ attachment.original_filename }}"
+                                        >
+                                    </a>
+                                {% endif %}
+
+                                <div>
+                                    <a href="{{ url_for('static', filename=attachment.file_path) }}" target="_blank">
+                                        {{ attachment.original_filename }}
+                                    </a>
+                                </div>
+
+                                <div class="text-muted small">
+                                    {{ attachment.created_at.strftime("%d.%m.%Y %H:%M") if attachment.created_at else "-" }}
+                                </div>
+                                <form method="POST" action="{{ url_for('jobs.job_delete_attachment', job_id=job.id, attachment_id=attachment.id) }}" class="mt-2">
+                                {% if csrf_token %}
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                {% endif %}
+
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    Odstrániť
+                                </button>
+                            </form>
+                            </div>
+                        {% else %}
+                            <p class="text-muted mb-0">
+                                Zatiaľ žiadne prílohy.
+                            </p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Ďalší krok</h3>
+                    </div>
+
+<a href="{{ url_for('offers.create_offer_from_job', job_id=job.id) }}" class="btn btn-primary">
+  Vytvoriť ponuku
+</a>
+                       
+
+                        
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+</div>
+{% endblock %}

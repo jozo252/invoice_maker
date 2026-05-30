@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header d-print-none">
+    <div class="container-xl">
+        <div class="row g-2 align-items-center">
+            <div class="col">
+                <h2 class="page-title">
+                    Zákazky
+                </h2>
+                <div class="text-muted mt-1">
+                    Prehľad všetkých zákaziek
+                </div>
+            </div>
+
+            <div class="col-auto ms-auto d-print-none">
+                <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+            <i class="ti ti-arrow-left me-1"></i>
+            Späť na prehľad
+        </a>
+                <a href="{{ url_for('jobs.job_create') }}" class="btn btn-primary">
+                    + Nová zákazka
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page-body">
+    <div class="container-xl">
+
+      
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Zoznam zákaziek</h3>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table">
+                    <thead>
+                        <tr>
+                            <th>Názov</th>
+                            <th>Klient</th>
+                            <th>Status</th>
+                            <th>Vytvorené</th>
+                            <th class="w-1"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for job in jobs %}
+                            <tr>
+                                <td>
+                                    <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="text-reset">
+                                        <strong>{{ job.title }}</strong>
+                                    </a>
+
+                                    {% if job.description %}
+                                        <div class="text-muted small">
+                                            {{ job.description[:100] }}{% if job.description|length > 100 %}...{% endif %}
+                                        </div>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if job.client %}
+                                        {{ job.client.name }}
+                                    {% else %}
+                                        <span class="text-muted">Bez klienta</span>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if job.status == "new" %}
+                                        <span class="badge bg-blue-lt">Nová</span>
+                                    {% elif job.status == "inspection" %}
+                                        <span class="badge bg-yellow-lt">Obhliadka</span>
+                                    {% elif job.status == "offer_sent" %}
+                                        <span class="badge bg-purple-lt">Ponuka</span>
+                                    {% elif job.status == "approved" %}
+                                        <span class="badge bg-green-lt">Schválená</span>
+                                    {% elif job.status == "done" %}
+                                        <span class="badge bg-teal-lt">Hotová</span>
+                                    {% elif job.status == "invoiced" %}
+                                        <span class="badge bg-success-lt">Fakturovaná</span>
+                                    {% elif job.status == "cancelled" %}
+                                        <span class="badge bg-red-lt">Zrušená</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary-lt">{{ job.status }}</span>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {{ job.created_at.strftime("%d.%m.%Y") if job.created_at else "-" }}
+                                </td>
+
+                                <td>
+                                    <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="btn btn-sm btn-outline-primary">
+                                        Detail
+                                    </a>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-5">
+                                    Zatiaľ nemáš žiadne zákazky.
+                                    <br>
+                                    <a href="{{ url_for('jobs.job_create') }}" class="btn btn-primary mt-3">
+                                        Vytvoriť prvú zákazku
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

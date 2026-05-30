@@ -10,14 +10,19 @@
     </div>
 
     <div class="d-flex flex-wrap gap-2">
-        <a href="{{ url_for('offers.ai_offer_page') }}" class="btn btn-primary">
-            <i class="ti ti-sparkles me-1"></i>
+        <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+            <i class="ti ti-arrow-left me-1"></i>
+            Späť na prehľad
+        </a>
+        <a href="{{ url_for('offers.offer_create') }}" class="btn btn-primary">
+            <i class="ti ti-file-plus me-1"></i>
             Nová ponuka
         </a>
-        <a href="{{ url_for('offers.new_lead') }}" class="btn btn-outline-secondary">
+       <!--- tu bol neiekdy dopyt, predchodca jobsu, ale neviem ci to tam chceme, lebo dopyty budu asi skor vecou CRM a nemusime ich mat v ponukach
+       <a href="{{ url_for('offers.new_lead') }}" class="btn btn-outline-secondary">
             <i class="ti ti-message-plus me-1"></i>
             Nový dopyt
-        </a>
+        </a>--->
     </div>
 </div>
 
@@ -110,14 +115,19 @@
         </div>
 
         <div class="d-flex flex-wrap gap-2">
-            <a href="{{ url_for('offers.ai_offer_page') }}" class="btn btn-primary">
-                <i class="ti ti-sparkles me-1"></i>
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+            <i class="ti ti-arrow-left me-1"></i>
+            Späť na prehľad
+        </a>
+           <a href="{{ url_for('offers.offer_create') }}" class="btn btn-primary">
+            <i class="ti ti-file-plus me-1"></i>
                 Vytvoriť prvú ponuku
             </a>
-            <a href="{{ url_for('offers.new_lead') }}" class="btn btn-outline-secondary">
+           <!---  dopyt asi nechceme, lebo dopyty budu skor vecou CRM a nemusime ich mat v ponukach
+           <a href="{{ url_for('offers.new_lead') }}" class="btn btn-outline-secondary">
                 <i class="ti ti-message-plus me-1"></i>
                 Vytvoriť dopyt
-            </a>
+            </a>-->
         </div>
     </div>
 </div>

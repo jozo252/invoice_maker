@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header d-print-none">
+    <div class="container-xl">
+        <div class="row g-2 align-items-center">
+            <div class="col">
+                <h2 class="page-title">
+                    Upraviť poznámku
+                </h2>
+                <div class="text-muted mt-1">
+                    Zákazka: {{ job.title }}
+                </div>
+            </div>
+
+            <div class="col-auto ms-auto d-print-none">
+                <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="btn btn-outline-secondary">
+                    Späť na zákazku
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page-body">
+    <div class="container-xl">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="row row-cards">
+            <div class="col-md-8">
+                <form method="POST" action="{{ url_for('jobs.job_edit_note', job_id=job.id, note_id=note.id) }}" class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Poznámka</h3>
+                    </div>
+
+                    <div class="card-body">
+
+                        {% if csrf_token %}
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label class="form-label">Typ poznámky</label>
+                            <select name="note_type" class="form-select">
+                                <option value="text" {% if note.note_type == "text" %}selected{% endif %}>
+                                    Poznámka
+                                </option>
+                                <option value="inspection" {% if note.note_type == "inspection" %}selected{% endif %}>
+                                    Obhliadka
+                                </option>
+                                <option value="material" {% if note.note_type == "material" %}selected{% endif %}>
+                                    Materiál
+                                </option>
+                                <option value="task" {% if note.note_type == "task" %}selected{% endif %}>
+                                    Úloha
+                                </option>
+                                <option value="ai" {% if note.note_type == "ai" %}selected{% endif %}>
+                                    AI výstup
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Text poznámky</label>
+                            <textarea 
+                                name="content" 
+                                class="form-control" 
+                                rows="8"
+                                required
+                            >{{ note.content }}</textarea>
+                        </div>
+
+                    </div>
+
+                    <div class="card-footer text-end">
+                        <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="btn btn-link">
+                            Zrušiť
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            Uložiť zmeny
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Tip</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">
+                            Poznámky by mali byť dostatočne jasné, aby sa z nich dala neskôr vytvoriť cenová ponuka.
+                        </p>
+
+                        <div class="alert alert-info">
+                            Nepíš román. Píš veci, ktoré majú dopad na cenu, materiál alebo čas práce.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

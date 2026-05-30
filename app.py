@@ -47,12 +47,11 @@ def create_app():
     app.config["STRIPE_PRODUCT_ID"] = os.getenv("STRIPE_PRODUCT_ID")
     app.config["SUCCESS_URL"] = os.getenv("SUCCESS_URL")    
     app.config["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
-    app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
+    app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024
 
     #-------------------------------------------------------------------stamp
 
     app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
-    app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 
     app.config['ALLOWED_STAMP_EXT'] = {'png', 'jpg', 'jpeg', 'webp'}
     
 
@@ -72,8 +71,10 @@ def create_app():
     from routes import main as main_blueprint
     from aibot_routes import aibot as aibot_bp
     from offers import offers
+    from jobs.routes import jobs_bp
     app.register_blueprint(main_blueprint)
     app.register_blueprint(aibot_bp)
     app.register_blueprint(offers)
+    app.register_blueprint(jobs_bp)
 
     return app

@@ -179,6 +179,7 @@ class Offer(db.Model):
     user_id = db.Column(db.Integer, nullable=False)
     lead_id = db.Column(db.Integer, db.ForeignKey("lead.id"))
     company_id = db.Column(db.Integer, nullable=False)
+    job_id = db.Column(db.Integer, db.ForeignKey("jobs.id"), nullable=True)
     currency = db.Column(db.String(10), nullable=False)
 
     customer_name = db.Column(db.String(255))
@@ -194,3 +195,63 @@ class Offer(db.Model):
     status = db.Column(db.String(50), default="draft")  # draft / sent / accepted
 
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    job = db.relationship("Job", backref="offers")
+
+
+#---------------------------------------------------------------------- Jobs ---------------------------------------
+class Job(db.Model):
+    __tablename__ = "jobs"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    client_id = db.Column(db.Integer, db.ForeignKey("clients.id"), nullable=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True)
+
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+
+    status = db.Column(db.String(50), nullable=False, default="new")
+    # new, inspection, offer_sent, approved, done, invoiced, cancelled
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    client = db.relationship("Client", backref="jobs")
+    company = db.relationship("Company", backref="jobs")
+    notes = db.relationship("JobNote", backref="job", lazy=True, cascade="all, delete-orphan")
+    attachments = db.relationship("JobAttachment", backref="job", lazy=True, cascade="all, delete-orphan")
+
+class JobNote(db.Model):
+    __tablename__ = "job_notes"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    job_id = db.Column(db.Integer, db.ForeignKey("jobs.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+
+    content = db.Column(db.Text, nullable=False)
+    note_type = db.Column(db.String(50), nullable=False, default="text")
+    # text, inspection, material, task, ai
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class JobAttachment(db.Model):
+    __tablename__ = "job_attachments"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    job_id = db.Column(db.Integer, db.ForeignKey("jobs.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+    filename = db.Column(db.String(255), nullable=False)
+    original_filename = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(500), nullable=False)
+    file_type = db.Column(db.String(50), nullable=True)
+    mime_type = db.Column(db.String(100), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

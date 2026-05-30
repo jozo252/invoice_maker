@@ -1,197 +1,92 @@
 {% extends "base.html" %}
-{% block title %}InvoiceMakerAI – Jednoduché faktúry pre živnostníkov{% endblock %}
+{% block title %}InvoiceMakerAI – Faktúry, ponuky a zákazky jednoducho{% endblock %}
 
 {% block content %}
 <div class="container-xl">
 
-  <!-- HERO -->
-  <div class="row align-items-center py-5 py-md-6">
-    <div class="col-12 col-lg-6">
-      <span class="badge bg-azure-lt text-azure mb-3">Fakturácia pre živnostníkov a malé firmy</span>
+  <div class="row align-items-center py-5">
+    <div class="col-12 col-lg-7">
+
+      <div class="text-muted mb-3">
+        Fakturácia pre živnostníkov a malé firmy
+      </div>
+
       <h1 class="display-5 fw-bold mb-3">
-        Vystav faktúru bez excelu,<br class="d-none d-sm-block">
-        zbytočného chaosu a ručných prepočtov.
+        Menej chaosu okolo zákaziek, ponúk a faktúr.
       </h1>
-      <p class="text-secondary mb-4">
-        Jednoduchý formulár, slovenské náležitosti, PDF export a prehľad klientov na jednom mieste.
+
+      <p class="lead text-secondary mb-4">
+        Jednoduchá aplikácia na evidenciu zákaziek, tvorbu cenových ponúk,
+        vystavenie faktúr a export do PDF.
       </p>
 
-      <div class="d-flex flex-wrap gap-2">
+      <div class="d-flex flex-wrap gap-2 mb-3">
         <a href="{{ url_for('main.register') }}" class="btn btn-primary btn-lg">
           Začať zdarma
         </a>
-        <a href="{{ url_for('main.pricing') }}" class="btn btn-outline-secondary btn-lg">
-          Pozrieť ceny
+
+        <a href="{{ url_for('main.login') }}" class="btn btn-outline-secondary btn-lg">
+          Prihlásiť sa
         </a>
       </div>
 
-      <div class="text-secondary small mt-3">
-        Bez karty • 14 dní skúšobná verzia • Zrušenie kedykoľvek
+      <div class="text-muted small">
+        Bez zbytočného nastavovania. Vhodné pre remeselníkov, živnostníkov a malé firmy.
       </div>
+
     </div>
 
-    <div class="col-12 col-lg-6 mt-4 mt-lg-0">
-      <div class="card shadow-sm">
-        <div class="card-body">
-          <div class="fw-semibold mb-3">Čo získaš</div>
+    <div class="col-12 col-lg-5 mt-4 mt-lg-0">
+      <div class="card">
+        <div class="card-body p-4">
 
-          <div class="d-flex align-items-start gap-3 mb-3">
-            <div class="avatar avatar-sm bg-azure-lt text-azure">
-              <i class="ti ti-file-invoice"></i>
-            </div>
+          <div class="fw-semibold mb-3">
+            Základný workflow
+          </div>
+
+          <div class="d-flex gap-3 mb-3">
+            <div class="fw-bold text-primary">1</div>
             <div>
-              <div class="fw-medium">Rýchle vystavenie faktúry</div>
-              <div class="text-secondary small">Jasný formulár bez zbytočných krokov.</div>
+              <div class="fw-semibold">Založíš zákazku</div>
+              <div class="text-muted small">
+                Poznámky, popis práce, prílohy a fotky máš na jednom mieste.
+              </div>
             </div>
           </div>
 
-          <div class="d-flex align-items-start gap-3 mb-3">
-            <div class="avatar avatar-sm bg-green-lt text-green">
-              <i class="ti ti-calculator"></i>
-            </div>
+          <div class="d-flex gap-3 mb-3">
+            <div class="fw-bold text-primary">2</div>
             <div>
-              <div class="fw-medium">Automatické výpočty</div>
-              <div class="text-secondary small">Medzisúčet, DPH a celková suma bez ručného počítania.</div>
+              <div class="fw-semibold">Vytvoríš ponuku</div>
+              <div class="text-muted small">
+                Zo zákazky pripravíš cenovú ponuku s položkami a cenami.
+              </div>
             </div>
           </div>
 
-          <div class="d-flex align-items-start gap-3">
-            <div class="avatar avatar-sm bg-indigo-lt text-indigo">
-              <i class="ti ti-file-type-pdf"></i>
-            </div>
+          <div class="d-flex gap-3">
+            <div class="fw-bold text-primary">3</div>
             <div>
-              <div class="fw-medium">PDF export</div>
-              <div class="text-secondary small">Hotovú faktúru si stiahneš alebo vytlačíš.</div>
+              <div class="fw-semibold">Vystavíš faktúru</div>
+              <div class="text-muted small">
+                Hotovú faktúru exportuješ do PDF alebo odošleš klientovi.
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div class="text-secondary small mt-2">
-        AI asistent na návrh údajov pripravujeme v ďalších verziách.
-      </div>
-    </div>
-  </div>
-
-  <!-- BENEFITY -->
-  <div class="row g-3 g-md-4 mb-5">
-    <div class="col-12 col-md-4">
-      <div class="card h-100">
-        <div class="card-body d-flex align-items-center gap-3">
-          <div class="avatar avatar-md bg-azure-lt text-azure">
-            <i class="ti ti-bolt"></i>
-          </div>
-          <div>
-            <div class="fw-semibold">Jednoduchý workflow</div>
-            <div class="text-secondary small">Klient → položky → PDF</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-md-4">
-      <div class="card h-100">
-        <div class="card-body d-flex align-items-center gap-3">
-          <div class="avatar avatar-md bg-green-lt text-green">
-            <i class="ti ti-square-check"></i>
-          </div>
-          <div>
-            <div class="fw-semibold">Slovenské náležitosti</div>
-            <div class="text-secondary small">IČO, DIČ, IČ DPH, IBAN, splatnosť</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-md-4">
-      <div class="card h-100">
-        <div class="card-body d-flex align-items-center gap-3">
-          <div class="avatar avatar-md bg-indigo-lt text-indigo">
-            <i class="ti ti-users"></i>
-          </div>
-          <div>
-            <div class="fw-semibold">Klienti na jednom mieste</div>
-            <div class="text-secondary small">Uložené údaje pre rýchlejšie vystavenie ďalších faktúr</div>
-          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- PROBLEM / SOLUTION -->
-  <div class="row py-4 py-md-5">
-    <div class="col-12 col-lg-5">
-      <h2 class="h1 mb-3">Menej administratívy, viac hotovej práce.</h2>
-      <p class="text-secondary">
-        Namiesto excelov a starých šablón máš jedno miesto, kde vytvoríš faktúru, uložíš klienta a stiahneš PDF.
-      </p>
-    </div>
-
-    <div class="col-12 col-lg-7">
-      <div class="row g-3 g-md-4">
-        <div class="col-12 col-md-6">
-          <div class="card h-100">
-            <div class="card-body">
-              <div class="mb-2">
-                <i class="ti ti-building me-2 text-primary"></i>
-                <span class="fw-semibold">Uložené údaje firmy</span>
-              </div>
-              <div class="text-secondary">Raz nastavíš firmu a používaš ju pri ďalších faktúrach.</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-12 col-md-6">
-          <div class="card h-100">
-            <div class="card-body">
-              <div class="mb-2">
-                <i class="ti ti-user me-2 text-primary"></i>
-                <span class="fw-semibold">Prehľad klientov</span>
-              </div>
-              <div class="text-secondary">Kontakty a fakturačné údaje máš vždy poruke.</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-12 col-md-6">
-          <div class="card h-100">
-            <div class="card-body">
-              <div class="mb-2">
-                <i class="ti ti-receipt-tax me-2 text-primary"></i>
-                <span class="fw-semibold">Jasné sumy a splatnosť</span>
-              </div>
-              <div class="text-secondary">Bez ručného dopočítavania a chýb v číslach.</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-12 col-md-6">
-          <div class="card h-100">
-            <div class="card-body">
-              <div class="mb-2">
-                <i class="ti ti-file-export me-2 text-primary"></i>
-                <span class="fw-semibold">Export do PDF</span>
-              </div>
-              <div class="text-secondary">Hotovú faktúru vieš stiahnuť alebo vytlačiť.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- AKO TO FUNGUJE -->
-  <div class="row py-4 py-md-5">
-    <div class="col-12">
-      <h2 class="h1 mb-4">Ako to funguje</h2>
-    </div>
-
+  <div class="row g-3 py-4">
     <div class="col-12 col-md-4">
       <div class="card h-100">
         <div class="card-body">
-          <div class="avatar avatar-md bg-primary-lt text-primary mb-2">1</div>
-          <div class="fw-semibold mb-1">Vyplníš údaje</div>
-          <div class="text-secondary">Zadáš klienta, položky, dátum a spôsob úhrady.</div>
+          <div class="fw-semibold mb-2">Zákazky</div>
+          <div class="text-muted">
+            Ulož si popis práce, poznámky, fotky a prílohy ešte pred vytvorením ponuky.
+          </div>
         </div>
       </div>
     </div>
@@ -199,9 +94,10 @@
     <div class="col-12 col-md-4">
       <div class="card h-100">
         <div class="card-body">
-          <div class="avatar avatar-md bg-primary-lt text-primary mb-2">2</div>
-          <div class="fw-semibold mb-1">Skontroluješ výsledok</div>
-          <div class="text-secondary">Súčet a ostatné údaje uvidíš ešte pred exportom.</div>
+          <div class="fw-semibold mb-2">Ponuky</div>
+          <div class="text-muted">
+            Priprav cenovú ponuku z položiek, množstiev a cien bez excelových šablón.
+          </div>
         </div>
       </div>
     </div>
@@ -209,75 +105,34 @@
     <div class="col-12 col-md-4">
       <div class="card h-100">
         <div class="card-body">
-          <div class="avatar avatar-md bg-primary-lt text-primary mb-2">3</div>
-          <div class="fw-semibold mb-1">Stiahneš PDF</div>
-          <div class="text-secondary">Faktúru vytlačíš alebo pošleš klientovi.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- CENY -->
-  <div class="row py-4 py-md-5" id="pricing-short">
-    <div class="col-12 col-lg-10 mx-auto">
-      <div class="card card-body">
-        <div class="row align-items-center g-3 g-md-4">
-          <div class="col-12 col-lg-7">
-            <h2 class="h2 mb-2">Jednoduché ceny</h2>
-            <div class="text-secondary">
-              Začni zdarma. Pro plán za <strong>7,99 € / mesiac</strong> so skúšobnou verziou na 14 dní.
-            </div>
-          </div>
-          <div class="col-12 col-lg-5 text-lg-end">
-            <a href="{{ url_for('main.pricing') }}" class="btn btn-outline-primary me-2">Pozrieť plány</a>
-            <a href="{{ url_for('main.register') }}" class="btn btn-primary">Začať zdarma</a>
+          <div class="fw-semibold mb-2">Faktúry</div>
+          <div class="text-muted">
+            Vystav faktúru, ulož klienta a exportuj výsledok do PDF.
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- FAQ -->
-  <div class="row py-4 py-md-5">
+  <div class="row py-4">
     <div class="col-12 col-lg-10 mx-auto">
-      <h2 class="h2 mb-3">Časté otázky</h2>
-
-      <div class="accordion" id="faq">
-        <div class="accordion-item">
-          <h2 class="accordion-header">
-            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#a1">
-              Je skúšobná verzia bez karty?
-            </button>
-          </h2>
-          <div id="a1" class="accordion-collapse collapse show" data-bs-parent="#faq">
-            <div class="accordion-body text-secondary">
-              Áno. Kartu nemusíš zadávať pri registrácii.
+      <div class="card">
+        <div class="card-body p-4 p-md-5">
+          <div class="row align-items-center g-4">
+            <div class="col-12 col-md-8">
+              <h2 class="h2 mb-2">
+                Pre koho to je?
+              </h2>
+              <p class="text-muted mb-0">
+                Pre ľudí, ktorí nechcú riešiť zákazky, ponuky a faktúry v poznámkach,
+                WhatsAppe, exceli a starých PDF šablónach.
+              </p>
             </div>
-          </div>
-        </div>
 
-        <div class="accordion-item">
-          <h2 class="accordion-header">
-            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#a2">
-              Dá sa faktúra exportovať?
-            </button>
-          </h2>
-          <div id="a2" class="accordion-collapse collapse" data-bs-parent="#faq">
-            <div class="accordion-body text-secondary">
-              Áno, hotovú faktúru vieš stiahnuť ako PDF.
-            </div>
-          </div>
-        </div>
-
-        <div class="accordion-item">
-          <h2 class="accordion-header">
-            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#a3">
-              Je to vhodné pre slovenských živnostníkov?
-            </button>
-          </h2>
-          <div id="a3" class="accordion-collapse collapse" data-bs-parent="#faq">
-            <div class="accordion-body text-secondary">
-              Áno, aplikácia je navrhnutá pre bežnú slovenskú fakturáciu a firemné údaje.
+            <div class="col-12 col-md-4 text-md-end">
+              <a href="{{ url_for('main.register') }}" class="btn btn-primary">
+                Vyskúšať aplikáciu
+              </a>
             </div>
           </div>
         </div>
@@ -285,13 +140,10 @@
     </div>
   </div>
 
-  <!-- CTA -->
-  <div class="row py-4 py-md-5">
+  <div class="row py-4">
     <div class="col-12 col-lg-10 mx-auto">
-      <div class="card card-body text-center">
-        <h3 class="h2 mb-2">Vytvor si prvú faktúru</h3>
-        <div class="text-secondary mb-3">Začni zdarma a vyskúšaj si celý workflow bez karty.</div>
-        <a href="{{ url_for('main.register') }}" class="btn btn-primary btn-lg">Začať zdarma</a>
+      <div class="text-center text-muted small">
+        InvoiceMakerAI pomáha zjednodušiť administratívu okolo zákaziek, ponúk a faktúr.
       </div>
     </div>
   </div>

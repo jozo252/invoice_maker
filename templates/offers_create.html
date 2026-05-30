@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Nová cenová ponuka{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+  <div>
+    <h1 class="h2 mb-1">
+      {% if job %}
+        Ponuka zo zákazky
+      {% else %}
+        Nová cenová ponuka
+      {% endif %}
+    </h1>
+
+    <div class="text-muted">
+      {% if job %}
+        Zákazka: {{ job.title }}
+      {% else %}
+        Manuálne vytvorenie cenovej ponuky.
+      {% endif %}
+    </div>
+    
+  </div>
+
+  <div>
+    <a href="{{ url_for('offers.ai_offer_page') }}" class="btn btn-outline-primary">
+    <i class="ti ti-sparkles me-1"></i>
+    Vytvoriť cez AI
+  </a>
+    {% if job %}
+      <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="btn btn-outline-secondary">
+        Späť na zákazku
+      </a>
+    {% else %}
+      <a href="{{ url_for('offers.offers_list') }}" class="btn btn-outline-secondary">
+        Späť na ponuky
+      </a>
+    {% endif %}
+  </div>
+</div>
+
+<form method="POST" action="{% if job %}{{ url_for('offers.create_offer_from_job', job_id=job.id) }}{% else %}{{ url_for('offers.offer_create') }}{% endif %}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="row g-4">
+    <div class="col-lg-8">
+
+      <div class="card mb-4">
+        <div class="card-header">
+          <span class="fw-semibold">Zákazník a firma</span>
+        </div>
+
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Firma</label>
+            <select name="company_id" class="form-select" required>
+              <option value="">Vyber firmu</option>
+              {% for company in companies %}
+                <option value="{{ company.id }}"
+                  {% if default_company_id and default_company_id == company.id %}selected{% endif %}
+                >
+                  {{ company.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Meno zákazníka</label>
+            <input
+              type="text"
+              name="customer_name"
+              class="form-control"
+              value="{{ default_customer_name }}"
+              required
+            >
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Email zákazníka</label>
+            <input
+              type="email"
+              name="customer_email"
+              class="form-control"
+              value="{{ default_customer_email }}"
+            >
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Mena</label>
+            <input
+              type="text"
+              name="currency"
+              class="form-control"
+              value="EUR"
+              required
+            >
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-semibold">Položky ponuky</span>
+    <button type="button" class="btn btn-outline-primary btn-sm" id="add-item">
+      + Pridať položku
+    </button>
+  </div>
+
+  <div class="card-body">
+
+    <!-- Hlavička položiek -->
+    <div class="row g-2 mb-2 text-muted small fw-semibold">
+      <div class="col-md-5">
+        Položka
+      </div>
+
+      <div class="col-md-2">
+        Množstvo
+      </div>
+
+      <div class="col-md-2">
+        Jednotka
+      </div>
+
+      <div class="col-md-2">
+        Cena / jednotka
+      </div>
+
+      <div class="col-md-1 text-center">
+        Akcia
+      </div>
+    </div>
+
+    <div id="items-wrapper">
+      <div class="row g-2 mb-2 offer-item-row">
+        <div class="col-md-5">
+          <input type="text" name="item_name[]" class="form-control" placeholder="Názov položky" required>
+        </div>
+
+        <div class="col-md-2">
+          <input type="number" step="0.01" name="item_qty[]" class="form-control" value="1" required>
+        </div>
+
+        <div class="col-md-2">
+          <input type="text" name="item_unit[]" class="form-control" value="ks" required>
+        </div>
+
+        <div class="col-md-2">
+          <input type="number" step="0.01" name="item_price[]" class="form-control" value="0.00" required>
+        </div>
+
+        <div class="col-md-1">
+          <button type="button" class="btn btn-outline-danger w-100 remove-item">×</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="fw-semibold">Poznámky</span>
+        </div>
+
+        <div class="card-body">
+          <textarea name="notes" rows="8" class="form-control">{{ default_notes }}</textarea>
+        </div>
+
+        <div class="card-footer text-end">
+          <button type="submit" class="btn btn-primary">
+            Vytvoriť ponuku
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="col-lg-4">
+      {% if job %}
+        <div class="card mb-4">
+          <div class="card-header">
+            <span class="fw-semibold">Zdrojová zákazka</span>
+          </div>
+
+          <div class="card-body">
+            <div class="fw-semibold">{{ job.title }}</div>
+
+            {% if job.description %}
+              <p class="text-muted mt-2">{{ job.description }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="fw-semibold">Poznámky zo zákazky</span>
+          </div>
+
+          <div class="card-body">
+            {% for note in job.notes %}
+              <div class="mb-3 pb-3 border-bottom">
+                <div class="text-muted small">{{ note.note_type }}</div>
+                <div>{{ note.content }}</div>
+              </div>
+            {% else %}
+              <p class="text-muted mb-0">Zatiaľ žiadne poznámky.</p>
+            {% endfor %}
+          </div>
+        </div>
+      {% else %}
+        <div class="card">
+          <div class="card-header">
+            <span class="fw-semibold">Tip</span>
+          </div>
+
+          <div class="card-body text-muted">
+            Toto je manuálne vytvorenie ponuky. AI flow nechaj bokom ako samostatný nástroj.
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</form>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const wrapper = document.getElementById("items-wrapper");
+  const addButton = document.getElementById("add-item");
+
+  if (!wrapper || !addButton) return;
+
+  addButton.addEventListener("click", function () {
+    const row = document.createElement("div");
+    row.className = "row g-2 mb-2 offer-item-row";
+
+    row.innerHTML = `
+      <div class="col-md-5">
+        <input type="text" name="item_name[]" class="form-control" placeholder="Názov položky" required>
+      </div>
+
+      <div class="col-md-2">
+        <input type="number" step="0.01" name="item_qty[]" class="form-control" value="1" required>
+      </div>
+
+      <div class="col-md-2">
+        <input type="text" name="item_unit[]" class="form-control" value="ks" required>
+      </div>
+
+      <div class="col-md-2">
+        <input type="number" step="0.01" name="item_price[]" class="form-control" value="0.00" required>
+      </div>
+
+      <div class="col-md-1">
+        <button type="button" class="btn btn-outline-danger w-100 remove-item">×</button>
+      </div>
+    `;
+
+    wrapper.appendChild(row);
+  });
+
+  wrapper.addEventListener("click", function (e) {
+    if (e.target.classList.contains("remove-item")) {
+      const rows = wrapper.querySelectorAll(".offer-item-row");
+
+      if (rows.length > 1) {
+        e.target.closest(".offer-item-row").remove();
+      }
+    }
+  });
+});
+</script>
+{% endblock %}

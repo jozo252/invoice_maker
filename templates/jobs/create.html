@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header d-print-none">
+    <div class="container-xl">
+        <div class="row g-2 align-items-center">
+            <div class="col">
+                <h2 class="page-title">
+                    Nová zákazka
+                </h2>
+                <div class="text-muted mt-1">
+                    Založ zákazku ešte pred cenovou ponukou alebo faktúrou
+                </div>
+            </div>
+
+            <div class="col-auto ms-auto d-print-none">
+                <a href="{{ url_for('jobs.jobs_list') }}" class="btn btn-outline-secondary">
+                    Späť na zákazky
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page-body">
+    <div class="container-xl">
+
+
+        <div class="row row-cards">
+            <div class="col-md-8">
+                <form method="POST" action="{{ url_for('jobs.job_create') }}" class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Údaje zákazky</h3>
+                    </div>
+
+                    <div class="card-body">
+
+                        {% if csrf_token %}
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label class="form-label">Názov zákazky <span class="text-danger">*</span></label>
+                            <input 
+                                type="text" 
+                                name="title" 
+                                class="form-control" 
+                                placeholder="Napr. Elektroinštalácia byt Poprad"
+                                value="{{ request.form.get('title', '') }}"
+                                required
+                            >
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Klient</label>
+                            <select name="client_id" class="form-select">
+                                <option value="">Bez klienta</option>
+                                {% for client in clients %}
+                                    <option value="{{ client.id }}"
+                                        {% if request.form.get('client_id') == client.id|string %}selected{% endif %}
+                                    >
+                                        {{ client.name }}
+                                        {% if client.email %} — {{ client.email }}{% endif %}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-hint">
+                                Klienta môžeš doplniť aj neskôr.
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Firma</label>
+                            <select name="company_id" class="form-select">
+                                <option value="">Bez firmy</option>
+                                {% for company in companies %}
+                                    <option value="{{ company.id }}"
+                                        {% if request.form.get('company_id') == company.id|string %}selected{% endif %}
+                                    >
+                                        {{ company.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Popis zákazky</label>
+                            <textarea 
+                                name="description" 
+                                class="form-control" 
+                                rows="6"
+                                placeholder="Krátky popis: čo treba spraviť, kde, rozsah práce, dôležité veci..."
+                            >{{ request.form.get('description', '') }}</textarea>
+                        </div>
+
+                    </div>
+
+                    <div class="card-footer text-end">
+                        <a href="{{ url_for('jobs.jobs_list') }}" class="btn btn-link">
+                            Zrušiť
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            Vytvoriť zákazku
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Načo je zákazka?</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">
+                            Zákazka je miesto, kde si budeš držať poznámky, fotky, prílohy a neskôr z nej vytvoríš cenovú ponuku alebo faktúru.
+                        </p>
+
+                        <div class="alert alert-info">
+                            Zatiaľ nerieš dokonalosť. Stačí vytvoriť zákazku, zapísať realitu z obhliadky a uložiť fotky.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

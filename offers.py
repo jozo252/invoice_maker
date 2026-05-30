@@ -19,7 +19,7 @@ from flask_mail import Message
 from matplotlib.pylab import rint
 from ai import call_llm_extract_offer, call_llm_generate_offer_description
 from app import db
-from models import Lead, Offer, Invoice,Company,Client
+from models import Job, Lead, Offer, Invoice,Company,Client
 import json
 from pydantic import ValidationError
 from pydantic_models import OfferAI, OfferAIItem, InvoiceModel
@@ -903,6 +903,148 @@ def ai_expand_notes():
     except Exception as e:
         current_app.logger.exception("AI expand notes failed")
         return {"ok": False, "error": str(e)}, 500
+    
+
+def save_offer_from_form(job=None):
+    company_id = request.form.get("company_id") or None
+    customer_name = request.form.get("customer_name", "").strip()
+    customer_email = request.form.get("customer_email", "").strip()
+    currency = request.form.get("currency", "EUR").strip() or "EUR"
+    notes = request.form.get("notes", "").strip()
+
+    item_names = request.form.getlist("item_name[]")
+    item_qtys = request.form.getlist("item_qty[]")
+    item_units = request.form.getlist("item_unit[]")
+    item_prices = request.form.getlist("item_price[]")
+
+    items = []
+    subtotal = Decimal("0.00")
+
+    for name, qty_raw, unit, price_raw in zip(item_names, item_qtys, item_units, item_prices):
+        name = name.strip()
+        unit = unit.strip() or "ks"
+
+        if not name:
+            continue
+
+        try:
+            qty = Decimal(qty_raw.replace(",", "."))
+        except Exception:
+            qty = Decimal("1")
+
+        try:
+            price = Decimal(price_raw.replace(",", "."))
+        except Exception:
+            price = Decimal("0")
+
+        line_total = qty * price
+        subtotal += line_total
+
+        items.append({
+            "name": name,
+            "quantity": float(qty),
+            "unit": unit,
+            "price_per_item": float(price),
+            "total": float(line_total),
+        })
+
+    if not company_id:
+        flash("Vyber firmu.", "danger")
+        if job:
+            return redirect(url_for("offers.create_offer_from_job", job_id=job.id))
+        return redirect(url_for("offers.offer_create"))
+
+    if not customer_name:
+        flash("Zadaj meno zákazníka.", "danger")
+        if job:
+            return redirect(url_for("offers.create_offer_from_job", job_id=job.id))
+        return redirect(url_for("offers.offer_create"))
+
+    if not items:
+        flash("Ponuka musí mať aspoň jednu položku.", "danger")
+        if job:
+            return redirect(url_for("offers.create_offer_from_job", job_id=job.id))
+        return redirect(url_for("offers.offer_create"))
+
+    offer = Offer(
+        user_id=current_user.id,
+        job_id=job.id if job else None,
+        company_id=int(company_id),
+        customer_name=customer_name,
+        customer_email=customer_email,
+        currency=currency,
+        notes=notes,
+        items=items,
+        subtotal=subtotal,
+        discount_total=Decimal("0.00"),
+        total=subtotal,
+        status="draft",
+    )
+
+    db.session.add(offer)
+
+    if job:
+        job.status = "offer_sent"
+
+    db.session.commit()
+
+    flash("Cenová ponuka bola vytvorená.", "success")
+    return redirect(url_for("offers.edit_offer", offer_id=offer.id))
+
+@offers.route("/offers/create", methods=["GET", "POST"])
+@login_required
+def offer_create():
+    if request.method == "POST":
+        return save_offer_from_form()
+
+    companies = Company.query.filter_by(user_id=current_user.id).all()
+    clients = Client.query.filter_by(user_id=current_user.id).order_by(Client.name.asc()).all()
+
+    return render_template(
+        "offers_create.html",
+        companies=companies,
+        clients=clients,
+        job=None,
+        default_customer_name="",
+        default_customer_email="",
+        default_notes="",
+        default_company_id=None,
+    )
+
+@offers.route("/offers/create-from-job/<int:job_id>", methods=["GET", "POST"])
+@login_required
+def create_offer_from_job(job_id):
+    job = Job.query.filter_by(
+        id=job_id,
+        user_id=current_user.id
+    ).first_or_404()
+
+    if request.method == "POST":
+        return save_offer_from_form(job=job)
+
+    companies = Company.query.filter_by(user_id=current_user.id).all()
+    clients = Client.query.filter_by(user_id=current_user.id).order_by(Client.name.asc()).all()
+
+    default_notes_parts = []
+
+    if job.description:
+        default_notes_parts.append(job.description)
+
+    for note in job.notes:
+        default_notes_parts.append(f"- {note.content}")
+
+    default_notes = "\n".join(default_notes_parts)
+
+    return render_template(
+        "offers_create.html",
+        companies=companies,
+        clients=clients,
+        job=job,
+        default_customer_name=job.client.name if job.client else "",
+        default_customer_email=job.client.email if job.client and job.client.email else "",
+        default_notes=default_notes,
+        default_company_id=job.company_id,
+    )
     
 
 """@offers.route("/<int:offer_id>/convert-to-invoice", methods=["POST"])

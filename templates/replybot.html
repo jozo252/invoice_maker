@@ -1,42 +1,206 @@
 {% extends "base.html" %}
 
+{% block title %}ReplyBot{% endblock %}
+
 {% block content %}
 <meta name="csrf-token" content="{{ csrf_token() }}">
 
-<div class="container py-5">
-  <h1 class="mb-4">ReplyBot</h1>
-  <div class="mb-3">
-    <label for="input" class="form-label">Zadajte text pre generovanie odpovedi:</label>
-    <textarea id="input" class="form-control" rows="4"></textarea>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+  <div>
+    <h1 class="h2 mb-1">ReplyBot</h1>
+    <div class="text-muted">
+      Pomôže ti rýchlo pripraviť slušnú a jasnú odpoveď na správu od zákazníka.
+    </div>
   </div>
-  <button class="btn btn-primary mb-3" onclick="generate()">Generovat odpoved</button>
-  <div class="mb-3">
-    <label for="output" class="form-label">Vygenerovaná odpověď:</label>
-    <textarea id="output" class="form-control" rows="4" readonly></textarea>
+</div>
+
+<div class="row g-4">
+
+  <div class="col-12 col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <span class="fw-semibold">Vstupná správa</span>
+      </div>
+
+      <div class="card-body">
+        <div class="mb-3">
+          <label for="input" class="form-label">Text od zákazníka alebo pôvodná správa</label>
+          <textarea
+            id="input"
+            class="form-control"
+            rows="7"
+            placeholder="Sem vlož správu, na ktorú chceš odpovedať..."
+          ></textarea>
+
+          <div class="form-text">
+            Môžeš vložiť správu z e-mailu, WhatsAppu alebo SMS. ReplyBot pripraví návrh odpovede.
+          </div>
+        </div>
+
+        <div class="d-flex flex-column flex-md-row gap-2">
+          <button class="btn btn-primary" id="generate-btn" onclick="generateReply()">
+            <span class="btn-text">
+              <i class="ti ti-message-reply me-1"></i>
+              Vygenerovať odpoveď
+            </span>
+
+            <span class="btn-loading d-none">
+              <span class="spinner-border spinner-border-sm me-2"></span>
+              Generujem...
+            </span>
+          </button>
+
+          <button class="btn btn-outline-secondary" type="button" onclick="clearFields()">
+            Vymazať
+          </button>
+        </div>
+
+        <div id="error-message" class="alert alert-danger mt-3 d-none"></div>
+      </div>
+    </div>
+
+    <div class="card mt-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">Návrh odpovede</span>
+
+        <button class="btn btn-sm btn-outline-secondary" type="button" onclick="copyReply()">
+          <i class="ti ti-copy me-1"></i>
+          Kopírovať
+        </button>
+      </div>
+
+      <div class="card-body">
+        <textarea
+          id="output"
+          class="form-control"
+          rows="8"
+          placeholder="Tu sa zobrazí vygenerovaná odpoveď..."
+        ></textarea>
+
+        <div id="copy-status" class="form-text mt-2 d-none">
+          Odpoveď bola skopírovaná.
+        </div>
+      </div>
+    </div>
   </div>
-  <button class="btn btn-secondary" onclick="copy()">Kopírovat do schránky</button>
+
+  <div class="col-12 col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <span class="fw-semibold">Na čo je ReplyBot?</span>
+      </div>
+
+      <div class="card-body">
+        <p class="text-muted">
+          ReplyBot ti pomôže rýchlo pripraviť odpoveď na bežnú komunikáciu so zákazníkom.
+        </p>
+
+        <div class="mb-3">
+          <div class="fw-semibold">Typické použitie</div>
+          <div class="text-muted small">
+            zákazník sa pýta na cenu, termín, obhliadku, faktúru alebo stav zákazky.
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <div class="fw-semibold">Výhoda</div>
+          <div class="text-muted small">
+            nemusíš rozmýšľať nad formuláciou, len upravíš návrh a odošleš ho.
+          </div>
+        </div>
+
+        <div class="alert alert-info mb-0">
+          Výstup vždy skontroluj. AI môže navrhnúť dobrý text, ale rozhodnutie a zodpovednosť zostáva na tebe.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
 
 <script>
-async function generate() {
-  const input = document.getElementById("input").value;
+async function generateReply() {
+  const input = document.getElementById("input").value.trim();
+  const output = document.getElementById("output");
+  const button = document.getElementById("generate-btn");
+  const errorBox = document.getElementById("error-message");
   const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
 
-  const res = await fetch("/generate-reply", {
-    method: "POST",
-    
-    headers: {"Content-Type": "application/x-www-form-urlencoded",
-              "X-CSRFToken": csrfToken},
-    body: "input=" + encodeURIComponent(input)
-  });
+  const btnText = button.querySelector(".btn-text");
+  const btnLoading = button.querySelector(".btn-loading");
 
-  const data = await res.json();
-  document.getElementById("output").value = data.reply;
+  errorBox.classList.add("d-none");
+  errorBox.textContent = "";
+
+  if (!input) {
+    errorBox.textContent = "Najprv vlož text, na ktorý chceš odpovedať.";
+    errorBox.classList.remove("d-none");
+    return;
+  }
+
+  button.disabled = true;
+  btnText.classList.add("d-none");
+  btnLoading.classList.remove("d-none");
+
+  try {
+    const res = await fetch("/generate-reply", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-CSRFToken": csrfToken
+      },
+      body: "input=" + encodeURIComponent(input)
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "Nepodarilo sa vygenerovať odpoveď.");
+    }
+
+    output.value = data.reply || "";
+
+    if (!output.value) {
+      throw new Error("Server nevrátil žiadnu odpoveď.");
+    }
+
+  } catch (err) {
+    errorBox.textContent = err.message || "Nastala chyba pri generovaní odpovede.";
+    errorBox.classList.remove("d-none");
+  } finally {
+    button.disabled = false;
+    btnText.classList.remove("d-none");
+    btnLoading.classList.add("d-none");
+  }
 }
 
-function copy() {
+async function copyReply() {
   const output = document.getElementById("output");
-  output.select();
-  document.execCommand("copy");
+  const copyStatus = document.getElementById("copy-status");
+
+  if (!output.value.trim()) {
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(output.value);
+    copyStatus.classList.remove("d-none");
+
+    setTimeout(() => {
+      copyStatus.classList.add("d-none");
+    }, 2000);
+
+  } catch (err) {
+    output.select();
+    document.execCommand("copy");
+  }
+}
+
+function clearFields() {
+  document.getElementById("input").value = "";
+  document.getElementById("output").value = "";
+  document.getElementById("error-message").classList.add("d-none");
+  document.getElementById("copy-status").classList.add("d-none");
 }
 </script>
 {% endblock %}
