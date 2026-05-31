@@ -9,7 +9,7 @@
   <div>
     <h1 class="h2 mb-1">ReplyBot</h1>
     <div class="text-muted">
-      Pomôže ti rýchlo pripraviť slušnú a jasnú odpoveď na správu od zákazníka.
+      Pomôže ti pripraviť odpoveď zákazníkovi alebo vylepšiť tvoj vlastný text.
     </div>
   </div>
 </div>
@@ -17,28 +17,29 @@
 <div class="row g-4">
 
   <div class="col-12 col-lg-8">
+
     <div class="card">
       <div class="card-header">
-        <span class="fw-semibold">Vstupná správa</span>
+        <span class="fw-semibold">Vstupný text</span>
       </div>
 
       <div class="card-body">
         <div class="mb-3">
-          <label for="input" class="form-label">Text od zákazníka alebo pôvodná správa</label>
+          <label for="input" class="form-label">Text od zákazníka alebo tvoja odpoveď</label>
           <textarea
             id="input"
             class="form-control"
             rows="7"
-            placeholder="Sem vlož správu, na ktorú chceš odpovedať..."
+            placeholder="Sem vlož správu od zákazníka alebo svoju vlastnú odpoveď..."
           ></textarea>
 
           <div class="form-text">
-            Môžeš vložiť správu z e-mailu, WhatsAppu alebo SMS. ReplyBot pripraví návrh odpovede.
+            Použi prvé tlačidlo, keď chceš vytvoriť odpoveď od nuly. Použi druhé tlačidlo, keď už máš text a chceš ho len upraviť.
           </div>
         </div>
 
         <div class="d-flex flex-column flex-md-row gap-2">
-          <button class="btn btn-primary" id="generate-btn" onclick="generateReply()">
+          <button class="btn btn-primary" id="generate-btn" type="button" onclick="generateReply()">
             <span class="btn-text">
               <i class="ti ti-message-reply me-1"></i>
               Vygenerovať odpoveď
@@ -47,6 +48,18 @@
             <span class="btn-loading d-none">
               <span class="spinner-border spinner-border-sm me-2"></span>
               Generujem...
+            </span>
+          </button>
+
+          <button class="btn btn-outline-primary" id="edit-btn" type="button" onclick="editReply()">
+            <span class="btn-text">
+              <i class="ti ti-pencil me-1"></i>
+              Vylepšiť môj text
+            </span>
+
+            <span class="btn-loading d-none">
+              <span class="spinner-border spinner-border-sm me-2"></span>
+              Upravujem...
             </span>
           </button>
 
@@ -61,7 +74,7 @@
 
     <div class="card mt-4">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <span class="fw-semibold">Návrh odpovede</span>
+        <span class="fw-semibold" id="output-title">Výstup</span>
 
         <button class="btn btn-sm btn-outline-secondary" type="button" onclick="copyReply()">
           <i class="ti ti-copy me-1"></i>
@@ -74,55 +87,108 @@
           id="output"
           class="form-control"
           rows="8"
-          placeholder="Tu sa zobrazí vygenerovaná odpoveď..."
+          placeholder="Tu sa zobrazí výsledok..."
         ></textarea>
 
         <div id="copy-status" class="form-text mt-2 d-none">
-          Odpoveď bola skopírovaná.
+          Text bol skopírovaný.
         </div>
       </div>
     </div>
+
   </div>
 
   <div class="col-12 col-lg-4">
-    <div class="card">
+
+    <div class="card mb-3">
       <div class="card-header">
         <span class="fw-semibold">Na čo je ReplyBot?</span>
       </div>
 
       <div class="card-body">
         <p class="text-muted">
-          ReplyBot ti pomôže rýchlo pripraviť odpoveď na bežnú komunikáciu so zákazníkom.
+          ReplyBot ti pomôže pri bežnej komunikácii so zákazníkom.
         </p>
 
         <div class="mb-3">
-          <div class="fw-semibold">Typické použitie</div>
+          <div class="fw-semibold">Vygenerovať odpoveď</div>
           <div class="text-muted small">
-            zákazník sa pýta na cenu, termín, obhliadku, faktúru alebo stav zákazky.
+            Použi, keď vložíš správu od zákazníka a chceš pripraviť návrh odpovede.
           </div>
         </div>
 
         <div class="mb-3">
-          <div class="fw-semibold">Výhoda</div>
+          <div class="fw-semibold">Vylepšiť môj text</div>
           <div class="text-muted small">
-            nemusíš rozmýšľať nad formuláciou, len upravíš návrh a odošleš ho.
+            Použi, keď už máš vlastnú odpoveď, ale chceš ju upraviť slušnejšie, jasnejšie a profesionálnejšie.
           </div>
         </div>
 
         <div class="alert alert-info mb-0">
-          Výstup vždy skontroluj. AI môže navrhnúť dobrý text, ale rozhodnutie a zodpovednosť zostáva na tebe.
+          Výstup vždy skontroluj. AI ti pomôže s formuláciou, ale finálnu správu posielaš ty.
         </div>
       </div>
     </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="fw-semibold">Príklady použitia</span>
+      </div>
+
+      <div class="card-body">
+        <div class="mb-3">
+          <div class="fw-semibold">Zákazník sa pýta na termín</div>
+          <div class="text-muted small">
+            ReplyBot pripraví slušnú odpoveď s návrhom obhliadky.
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <div class="fw-semibold">Zákazník tlačí na cenu</div>
+          <div class="text-muted small">
+            Pomôže odpovedať bez toho, aby text pôsobil podráždene alebo neprofesionálne.
+          </div>
+        </div>
+
+        <div>
+          <div class="fw-semibold">Máš napísaný hrubý text</div>
+          <div class="text-muted small">
+            Vložíš ho a necháš ho upraviť do lepšej formy.
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
 </div>
 
 <script>
 async function generateReply() {
+  await processText({
+    endpoint: "/generate-reply",
+    buttonId: "generate-btn",
+    outputTitle: "Návrh odpovede",
+    emptyMessage: "Najprv vlož správu, na ktorú chceš odpovedať.",
+    errorMessage: "Nepodarilo sa vygenerovať odpoveď."
+  });
+}
+
+async function editReply() {
+  await processText({
+    endpoint: "/edit-reply",
+    buttonId: "edit-btn",
+    outputTitle: "Vylepšený text",
+    emptyMessage: "Najprv vlož svoj text, ktorý chceš vylepšiť.",
+    errorMessage: "Nepodarilo sa upraviť text."
+  });
+}
+
+async function processText(config) {
   const input = document.getElementById("input").value.trim();
   const output = document.getElementById("output");
-  const button = document.getElementById("generate-btn");
+  const outputTitle = document.getElementById("output-title");
+  const button = document.getElementById(config.buttonId);
   const errorBox = document.getElementById("error-message");
   const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
 
@@ -133,17 +199,18 @@ async function generateReply() {
   errorBox.textContent = "";
 
   if (!input) {
-    errorBox.textContent = "Najprv vlož text, na ktorý chceš odpovedať.";
+    errorBox.textContent = config.emptyMessage;
     errorBox.classList.remove("d-none");
     return;
   }
 
-  button.disabled = true;
-  btnText.classList.add("d-none");
-  btnLoading.classList.remove("d-none");
+  setButtonsDisabled(true);
+
+  if (btnText) btnText.classList.add("d-none");
+  if (btnLoading) btnLoading.classList.remove("d-none");
 
   try {
-    const res = await fetch("/generate-reply", {
+    const res = await fetch(config.endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -155,23 +222,35 @@ async function generateReply() {
     const data = await res.json();
 
     if (!res.ok) {
-      throw new Error(data.error || "Nepodarilo sa vygenerovať odpoveď.");
+      throw new Error(data.error || config.errorMessage);
     }
 
-    output.value = data.reply || "";
+    const result = data.reply || data.edited_text || data.text || data.output || "";
 
-    if (!output.value) {
-      throw new Error("Server nevrátil žiadnu odpoveď.");
+    if (!result) {
+      throw new Error("Server nevrátil žiadny text.");
     }
+
+    output.value = result;
+    outputTitle.textContent = config.outputTitle;
 
   } catch (err) {
-    errorBox.textContent = err.message || "Nastala chyba pri generovaní odpovede.";
+    errorBox.textContent = err.message || config.errorMessage;
     errorBox.classList.remove("d-none");
   } finally {
-    button.disabled = false;
-    btnText.classList.remove("d-none");
-    btnLoading.classList.add("d-none");
+    setButtonsDisabled(false);
+
+    if (btnText) btnText.classList.remove("d-none");
+    if (btnLoading) btnLoading.classList.add("d-none");
   }
+}
+
+function setButtonsDisabled(disabled) {
+  const generateBtn = document.getElementById("generate-btn");
+  const editBtn = document.getElementById("edit-btn");
+
+  if (generateBtn) generateBtn.disabled = disabled;
+  if (editBtn) editBtn.disabled = disabled;
 }
 
 async function copyReply() {
@@ -199,6 +278,7 @@ async function copyReply() {
 function clearFields() {
   document.getElementById("input").value = "";
   document.getElementById("output").value = "";
+  document.getElementById("output-title").textContent = "Výstup";
   document.getElementById("error-message").classList.add("d-none");
   document.getElementById("copy-status").classList.add("d-none");
 }

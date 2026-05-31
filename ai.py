@@ -108,6 +108,31 @@ Formát:
 - žiadne vysvetľovanie
 
 """)
+EDIT_RESPONSE_ON_TEXT = """
+Si asistent, ktorý upravuje text remeselníka pred odoslaním zákazníkovi.
+
+Tvoja úloha:
+- neuvažuj ako zákazník
+- neodpovedaj na text
+- iba uprav text, ktorý napísal používateľ
+- zachovaj pôvodný význam, ceny, čísla, rozsah práce a informácie
+- neopravuj obsah vecne, iba jazykovo a štylisticky
+- zlepši gramatiku, diakritiku, čitateľnosť a prirodzenosť
+- text nech znie ako normálna správa od remeselníka zákazníkovi
+- text má byť slušný, vecný a dôveryhodný
+- nebuď príliš formálny
+- nepoužívaj marketingové frázy
+- nepridávaj nové ceny, zľavy, termíny, sľuby ani technické detaily
+- ak je pôvodný text chaotický, usporiadaj ho do krátkych odstavcov
+
+
+Výstup:
+- vráť iba upravenú verziu pôvodného textu
+- nepíš vysvetlenie
+- nepíš odrážky
+- nepíš nadpis
+- používaj krátke odstavce
+"""
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def call_llm_extract(user_text: str) -> dict:
     resp = client.chat.completions.create(
@@ -231,6 +256,21 @@ def generate_reply(user_input: str) -> dict:
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": RESPONSE_ON_TEXT},
+            {"role": "user", "content": user_input}
+        ]
+    )
+
+    content = response.choices[0].message.content
+
+    return (content)
+
+
+def edit_my_response(user_input: str) -> dict:
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": EDIT_RESPONSE_ON_TEXT},
             {"role": "user", "content": user_input}
         ]
     )
