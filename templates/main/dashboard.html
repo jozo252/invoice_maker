@@ -13,27 +13,27 @@
   </div>
   
 </div>
-
-
 {% if onboarding and not onboarding.invoice_done %}
 <div class="card border-primary mb-4">
   <div class="card-body">
+
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-3">
       <div>
         <h2 class="h4 mb-1">Začni tu</h2>
         <div class="text-muted">
-          Dokonči základné kroky, aby si mohol vytvoriť prvú zákazku, ponuku alebo faktúru.
+          Najprv nastav firmu. Potom môžeš vytvoriť zákazku, ponuku alebo faktúru podľa toho, čo práve potrebuješ.
         </div>
       </div>
 
       <div class="text-muted small">
-        {% set done_count = (1 if onboarding.company_done else 0) + (1 if onboarding.client_done else 0) + (1 if onboarding.invoice_done else 0) %}
-        Hotovo: {{ done_count }}/3
+        {% set done_count = (1 if onboarding.company_done else 0) + (1 if onboarding.invoice_done else 0) %}
+        Hotovo: {{ done_count }}/2
       </div>
     </div>
 
     <div class="d-flex flex-column gap-3">
 
+      <!-- 1. Firma -->
       <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 p-3 border rounded">
         <div>
           <div class="fw-semibold">
@@ -44,74 +44,109 @@
             {% endif %}
           </div>
           <div class="text-muted small">
-            Bez firemných údajov nevytvoríš korektnú ponuku ani faktúru.
+            Toto je základ. Bez firemných údajov nebude ponuka ani faktúra vyzerať profesionálne.
           </div>
         </div>
 
         {% if not onboarding.company_done %}
           <a href="{{ url_for('main.my_company') }}" class="btn btn-primary">
-            Vyplniť
+            Vyplniť firmu
           </a>
         {% else %}
           <span class="badge bg-success-lt text-success">Hotovo</span>
         {% endif %}
       </div>
 
-      <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 p-3 border rounded">
+      <!-- 2. Začni pracovať -->
+      <div class="p-3 border rounded">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+
+          <div>
+            <div class="fw-semibold">
+              {% if onboarding.invoice_done %}
+                ✅ 2. Prvý doklad vytvorený
+              {% else %}
+                2. Vyber, čo chceš spraviť ako prvé
+              {% endif %}
+            </div>
+
+            <div class="text-muted small">
+              Nemusíš ísť striktne cez celý proces. Zákazku, ponuku aj faktúru môžeš použiť samostatne.
+            </div>
+          </div>
+
+          {% if onboarding.invoice_done %}
+            <span class="badge bg-success-lt text-success">Hotovo</span>
+          {% endif %}
+        </div>
+
+        {% if onboarding.company_done and not onboarding.invoice_done %}
+          <div class="row g-2 mt-3">
+
+            <div class="col-12 col-md-4">
+              <a href="{{ url_for('jobs.job_create') }}" class="btn btn-primary w-100">
+                <i class="ti ti-briefcase me-1"></i>
+                Nová zákazka
+              </a>
+              <div class="text-muted small mt-1">
+                Keď chceš mať poznámky, fotky a ponuky pokope.
+              </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <a href="{{ url_for('offers.offer_create') }}" class="btn btn-outline-primary w-100">
+                <i class="ti ti-file-plus me-1"></i>
+                Nová ponuka
+              </a>
+              <div class="text-muted small mt-1">
+                Keď chceš rovno naceniť prácu.
+              </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <a href="{{ url_for('main.add_invoice') }}" class="btn btn-outline-secondary w-100">
+                <i class="ti ti-file-invoice me-1"></i>
+                Nová faktúra
+              </a>
+              <div class="text-muted small mt-1">
+                Keď potrebuješ len rýchlo vystaviť faktúru.
+              </div>
+            </div>
+
+          </div>
+        {% elif not onboarding.company_done %}
+          <div class="mt-3">
+            <button class="btn btn-outline-secondary" disabled>
+              Najprv vyplň firmu
+            </button>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Voliteľný klient -->
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 p-3 border rounded bg-body-tertiary">
         <div>
           <div class="fw-semibold">
             {% if onboarding.client_done %}
-              ✅ 2. Prvý klient
+              ✅ Klient pridaný
             {% else %}
-              2. Pridaj prvého klienta
+              Voliteľné: pridaj klienta
             {% endif %}
           </div>
           <div class="text-muted small">
-            Ulož si klienta, aby si ho mohol použiť v zákazke, ponuke alebo faktúre.
+            Klienta môžeš pridať teraz, ale nie je to nutný krok. Vieš ho doplniť aj pri zákazke, ponuke alebo faktúre.
           </div>
         </div>
 
-        {% if onboarding.company_done and not onboarding.client_done %}
-          <a href="{{ url_for('main.add_client') }}" class="btn btn-primary">
+        {% if onboarding.client_done %}
+          <span class="badge bg-success-lt text-success">Hotovo</span>
+        {% elif onboarding.company_done %}
+          <a href="{{ url_for('main.add_client') }}" class="btn btn-outline-secondary">
             Pridať klienta
           </a>
-        {% elif onboarding.client_done %}
-          <span class="badge bg-success-lt text-success">Hotovo</span>
         {% else %}
           <button class="btn btn-outline-secondary" disabled>
             Najprv firma
-          </button>
-        {% endif %}
-      </div>
-
-      <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 p-3 border rounded">
-        <div>
-          <div class="fw-semibold">
-            {% if onboarding.invoice_done %}
-              ✅ 3. Prvá faktúra
-            {% else %}
-              3. Vytvor prvú zákazku alebo faktúru
-            {% endif %}
-          </div>
-          <div class="text-muted small">
-            Ideálne začni zákazkou. Ak potrebuješ len rýchlu faktúru, môžeš ju vytvoriť priamo.
-          </div>
-        </div>
-
-        {% if onboarding.company_done and onboarding.client_done and not onboarding.invoice_done %}
-          <div class="d-flex flex-column flex-md-row gap-2">
-            <a href="{{ url_for('jobs.job_create') }}" class="btn btn-primary">
-              Vytvoriť zákazku
-            </a>
-            <a href="{{ url_for('main.add_invoice') }}" class="btn btn-outline-primary">
-              Rýchla faktúra
-            </a>
-          </div>
-        {% elif onboarding.invoice_done %}
-          <span class="badge bg-success-lt text-success">Hotovo</span>
-        {% else %}
-          <button class="btn btn-outline-secondary" disabled>
-            Dokonči predchádzajúce kroky
           </button>
         {% endif %}
       </div>
@@ -126,7 +161,8 @@
     <div class="mb-3">
       <h2 class="h4 mb-1">Hlavný flow</h2>
       <div class="text-muted">
-        Drž sa jedného procesu: zákazka, ponuka, faktúra.
+          Zákazky, ponuky aj faktúry môžeš používať samostatne. Celý flow použi vtedy, keď chceš mať poznámky, nacenenie aj fakturáciu pokope.
+
       </div>
     </div>
 
@@ -180,9 +216,7 @@
         </div>
       </div>
 
-      <div class="alert alert-info mt-3 mb-0">
-  Zákazky, ponuky aj faktúry môžeš používať samostatne. Celý flow použi vtedy, keď chceš mať poznámky, nacenenie aj fakturáciu pokope.
-</div>
+      
 
     </div>
   </div>
@@ -346,6 +380,15 @@
                   {% else %}
                     <span class="badge bg-warning-lt text-warning">Čaká na úhradu</span>
                   {% endif %}
+                </td>
+                <td class="text-end">
+                  <form method="POST" action="{{ url_for('main.mark_invoice_paid', id=invoice.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-success w-100">
+                      <i class="ti ti-cash me-1"></i>
+                      Označiť ako zaplatenú
+                    </button>
+                  </form>
                 </td>
 
                 <td class="text-end">

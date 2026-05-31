@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% block title %}Nová zákazka{% endblock %}
+
 {% block content %}
 <div class="page-header d-print-none">
     <div class="container-xl">
@@ -9,7 +11,7 @@
                     Nová zákazka
                 </h2>
                 <div class="text-muted mt-1">
-                    Založ zákazku ešte pred cenovou ponukou alebo faktúrou
+                    Založ základ zákazky. Poznámky, fotky a prílohy doplníš po vytvorení.
                 </div>
             </div>
 
@@ -25,12 +27,12 @@
 <div class="page-body">
     <div class="container-xl">
 
-
         <div class="row row-cards">
+
             <div class="col-md-8">
                 <form method="POST" action="{{ url_for('jobs.job_create') }}" class="card">
                     <div class="card-header">
-                        <h3 class="card-title">Údaje zákazky</h3>
+                        <h3 class="card-title">Základné údaje</h3>
                     </div>
 
                     <div class="card-body">
@@ -40,21 +42,27 @@
                         {% endif %}
 
                         <div class="mb-3">
-                            <label class="form-label">Názov zákazky <span class="text-danger">*</span></label>
-                            <input 
-                                type="text" 
-                                name="title" 
-                                class="form-control" 
+                            <label class="form-label">
+                                Názov zákazky <span class="text-danger">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                name="title"
+                                class="form-control"
                                 placeholder="Napr. Elektroinštalácia byt Poprad"
                                 value="{{ request.form.get('title', '') }}"
                                 required
                             >
+                            <small class="form-hint">
+                                Stačí krátky názov, podľa ktorého zákazku neskôr nájdeš.
+                            </small>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">Klient</label>
                             <select name="client_id" class="form-select">
                                 <option value="">Bez klienta</option>
+
                                 {% for client in clients %}
                                     <option value="{{ client.id }}"
                                         {% if request.form.get('client_id') == client.id|string %}selected{% endif %}
@@ -72,7 +80,7 @@
                         <div class="mb-3">
                             <label class="form-label">Firma</label>
                             <select name="company_id" class="form-select">
-                                <option value="">Bez firmy</option>
+
                                 {% for company in companies %}
                                     <option value="{{ company.id }}"
                                         {% if request.form.get('company_id') == company.id|string %}selected{% endif %}
@@ -80,48 +88,117 @@
                                         {{ company.name }}
                                     </option>
                                 {% endfor %}
+                                <option value="">Bez firmy</option>
+
                             </select>
+                            <small class="form-hint">
+                                Firmu môžeš doplniť aj neskôr.
+                            </small>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">Popis zákazky</label>
-                            <textarea 
-                                name="description" 
-                                class="form-control" 
+                            <textarea
+                                name="description"
+                                class="form-control"
                                 rows="6"
-                                placeholder="Krátky popis: čo treba spraviť, kde, rozsah práce, dôležité veci..."
+                                placeholder="Krátko napíš, čo treba spraviť, kde a aký je približný rozsah práce..."
                             >{{ request.form.get('description', '') }}</textarea>
+                            <small class="form-hint">
+                                Nemusí to byť dokonalé. Detailnejšie poznámky pridáš po vytvorení zákazky.
+                            </small>
                         </div>
 
                     </div>
 
-                    <div class="card-footer text-end">
-                        <a href="{{ url_for('jobs.jobs_list') }}" class="btn btn-link">
-                            Zrušiť
-                        </a>
-                        <button type="submit" class="btn btn-primary">
-                            Vytvoriť zákazku
-                        </button>
+                    <div class="card-footer d-flex flex-column flex-md-row justify-content-between gap-2">
+                        <div class="text-muted small">
+                            Po vytvorení sa dostaneš na detail zákazky, kde doplníš poznámky, fotky, prílohy alebo vytvoríš ponuku.
+                        </div>
+
+                        <div class="text-end">
+                            <a href="{{ url_for('jobs.jobs_list') }}" class="btn btn-link">
+                                Zrušiť
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                Vytvoriť zákazku
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
 
             <div class="col-md-4">
-                <div class="card">
+
+                <div class="card mb-3">
                     <div class="card-header">
-                        <h3 class="card-title">Načo je zákazka?</h3>
+                        <h3 class="card-title">Ako to funguje?</h3>
                     </div>
+
                     <div class="card-body">
                         <p class="text-muted">
-                            Zákazka je miesto, kde si budeš držať poznámky, fotky, prílohy a neskôr z nej vytvoríš cenovú ponuku alebo faktúru.
+                            Teraz stačí zákazku iba založiť. Nemusíš hneď vypĺňať všetko dokonale.
                         </p>
 
-                        <div class="alert alert-info">
-                            Zatiaľ nerieš dokonalosť. Stačí vytvoriť zákazku, zapísať realitu z obhliadky a uložiť fotky.
+                        <div class="mb-3">
+                            <div class="fw-semibold">
+                                Po vytvorení zákazky môžeš doplniť:
+                            </div>
+
+                            <ul class="text-muted small mt-2 mb-0">
+                                <li>poznámky z obhliadky,</li>
+                                <li>fotky a prílohy,</li>
+                                <li>ďalšie informácie k práci,</li>
+                                <li>cenovú ponuku alebo faktúru.</li>
+                            </ul>
+                        </div>
+
+                        <div class="alert alert-info mb-0">
+                            Cieľ je rýchlo zapísať robotu. Detaily doplníš neskôr v detaile zákazky.
                         </div>
                     </div>
                 </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Odporúčaný postup</h3>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="d-flex gap-3 mb-3">
+                            <div class="fw-bold text-primary">1</div>
+                            <div>
+                                <div class="fw-semibold">Založ zákazku</div>
+                                <div class="text-muted small">
+                                    Stačí názov a krátky popis.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-3 mb-3">
+                            <div class="fw-bold text-primary">2</div>
+                            <div>
+                                <div class="fw-semibold">Doplň poznámky a fotky</div>
+                                <div class="text-muted small">
+                                    Všetko pridáš v detaile zákazky.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-3">
+                            <div class="fw-bold text-primary">3</div>
+                            <div>
+                                <div class="fw-semibold">Vytvor ponuku</div>
+                                <div class="text-muted small">
+                                    Keď máš podklady, pripravíš cenovú ponuku.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
+
         </div>
 
     </div>

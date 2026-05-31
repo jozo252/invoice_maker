@@ -284,7 +284,7 @@ def dashboard():
     "invoice_done": has_invoices,
 }
 
-    return render_template('dashboard.html',
+    return render_template('main/dashboard.html',
                            invoices=invoices,
                            q=q,
                            InvoiceStatus=InvoiceStatus,
@@ -346,8 +346,8 @@ def status_by_client():
     return jsonify({
         "labels": labels,
         "datasets": [
-            {"label": "Paid", "data": paid},
-            {"label": "Unpaid", "data": unpaid},
+            {"label": "Zaplatené", "data": paid},
+            {"label": "Nezaplatené", "data": unpaid},
         ],
         "currency": "EUR"
     })

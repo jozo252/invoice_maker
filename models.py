@@ -176,6 +176,7 @@ class Lead(db.Model):
 
 class Offer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    offer_number = db.Column(db.String(50), nullable=True)
     user_id = db.Column(db.Integer, nullable=False)
     lead_id = db.Column(db.Integer, db.ForeignKey("lead.id"))
     company_id = db.Column(db.Integer, nullable=False)

@@ -31,6 +31,34 @@ from aibot_routes import invoice_number_generator
 offers = Blueprint("offers", __name__, url_prefix="/offers")
 
 #____________________________________________HELPERS__________________________
+
+def generate_offer_number(user_id, company_id=None):
+    year = datetime.utcnow().year
+
+    query = Offer.query.filter(
+        Offer.user_id == user_id,
+        Offer.offer_number.like(f"CP-{year}-%")
+    )
+
+    if company_id:
+        query = query.filter(Offer.company_id == company_id)
+
+    last_offer = (
+        query
+        .order_by(Offer.id.desc())
+        .first()
+    )
+
+    if not last_offer or not last_offer.offer_number:
+        next_number = 1
+    else:
+        try:
+            last_number = int(last_offer.offer_number.split("-")[-1])
+            next_number = last_number + 1
+        except Exception:
+            next_number = 1
+
+    return f"CP-{year}-{next_number:04d}"
 def generate_invoice_number():
     last_invoice = Invoice.query.filter_by(user_id=current_user.id).order_by(Invoice.id.desc()).first()
     new_number = (int(last_invoice.invoice_number.split("-")[-1]) + 1) if last_invoice else 1
@@ -150,6 +178,7 @@ def generate_offer_from_text(user_text: str, company_id: int, user_id: int) -> d
     total = money(total)
 
     db_ready = {
+        "offer_number": generate_offer_number(user_id, company_id),
         "user_id": user_id,
         "company_id": company_id,
         "currency": ai_obj.currency or "EUR",
@@ -171,6 +200,7 @@ def generate_offer_from_text(user_text: str, company_id: int, user_id: int) -> d
     }
 def save_offer_from_generated_data(db_ready: dict) -> Offer:
     offer = Offer(
+        offer_number=db_ready["offer_number"],
         user_id=db_ready["user_id"],
         company_id=db_ready["company_id"],
         currency=db_ready["currency"],
@@ -233,7 +263,7 @@ def send_offer_email(offer: Offer):
         id=offer.company_id,
         user_id=offer.user_id
     ).first()
-
+    
     if not company:
         raise ValueError("Company for offer was not found.")
     stamp_data_uri = company.stamp_url
@@ -263,7 +293,7 @@ def send_offer_email(offer: Offer):
         f"{company.name}"
     )
     msg = Message(
-        subject=f"Cenová ponuka {offer.id}",
+        subject=f"Cenová ponuka {offer.offer_number}",
         recipients=[offer.customer_email],
         sender=current_app.config['MAIL_DEFAULT_SENDER'],
         reply_to=company.email if company.email else None,
@@ -408,8 +438,11 @@ def generate_offer_from_lead(lead_id):
     discount_total = ai_data.get("discount_total", Decimal("0.00"))
     subtotal = ai_data.get("subtotal", Decimal("0.00"))
     total = ai_data.get("total", Decimal("0.00"))
+    offer_number = generate_offer_number(user_id=current_user.id, company_id=company.id)
+
 
     offer = Offer(
+        offer_number=offer_number,
         user_id=current_user.id,
         lead_id=lead.id,
         customer_name=customer_name or None,
@@ -672,9 +705,14 @@ def confirm_ai_offer():
             form_action=url_for("offers.confirm_ai_offer"),
             cancel_url=url_for("offers.ai_offer_page")
         )
+    offer_number = generate_offer_number(
+        user_id=current_user.id,
+        company_id=company.id
+    )
 
     offer = Offer(
         user_id=current_user.id,
+        offer_number=offer_number,
         company_id=company.id,
         customer_name=customer_name or None,
         customer_email=customer_email or None,
@@ -781,7 +819,7 @@ def download_offer(offer_id):
     }
     print(offer.items)
     pdf_path = render_invoice_to_pdf("offer_pdf.html", context)
-    return send_file(pdf_path, as_attachment=True, download_name=f"{offer.id}.pdf")
+    return send_file(pdf_path, as_attachment=True, download_name=f"{offer.offer_number}.pdf")
 
 @offers.route("/save-from-preview", methods=["POST"])
 @login_required
@@ -832,7 +870,10 @@ def save_offer_from_preview():
 
     discount_total = to_decimal(request.form.get("discount_total"), "0.00")
     total = subtotal - discount_total
-
+    offer_number = generate_offer_number(
+            user_id=current_user.id,
+            company_id=int(company_id) if company_id else None
+        )
     # --- CREATE OFFER ---
     offer = Offer(
         user_id=current_user.id,
@@ -847,6 +888,7 @@ def save_offer_from_preview():
         total=total,
         status="draft",
         created_at=datetime.utcnow(),
+        offer_number=offer_number,
     )
 
     db.session.add(offer)
@@ -941,7 +983,7 @@ def save_offer_from_form(job=None):
         subtotal += line_total
 
         items.append({
-            "name": name,
+            "description": name,
             "quantity": float(qty),
             "unit": unit,
             "price_per_item": float(price),
@@ -965,8 +1007,12 @@ def save_offer_from_form(job=None):
         if job:
             return redirect(url_for("offers.create_offer_from_job", job_id=job.id))
         return redirect(url_for("offers.offer_create"))
-
+    offer_number = generate_offer_number(
+            user_id=current_user.id,
+            company_id=int(company_id) if company_id else None
+        )
     offer = Offer(
+        offer_number=offer_number,
         user_id=current_user.id,
         job_id=job.id if job else None,
         company_id=int(company_id),

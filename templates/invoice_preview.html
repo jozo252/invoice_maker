@@ -9,7 +9,7 @@
   {% endif %}
 {% endwith %}
 
-<h2>Náhľad faktúry (AI)</h2>
+<h2>Náhľad faktúry</h2>
 
 <form method="post" action="{{ url_for('aibot.ai_confirm') }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

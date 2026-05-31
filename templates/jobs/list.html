@@ -40,6 +40,7 @@
                 <table class="table table-vcenter card-table">
                     <thead>
                         <tr>
+                            <th class="w-1">#</th>
                             <th>Názov</th>
                             <th>Klient</th>
                             <th>Status</th>
@@ -50,6 +51,9 @@
                     <tbody>
                         {% for job in jobs %}
                             <tr>
+                                <td class="text-muted">
+    {{ loop.index }}
+</td>
                                 <td>
                                     <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="text-reset">
                                         <strong>{{ job.title }}</strong>
