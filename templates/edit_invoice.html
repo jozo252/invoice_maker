@@ -16,8 +16,7 @@
       </div>
       <div class="col-md-3">
         <label class="form-label">Dátum dodania</label>
-        <input name="delivery_date" type="date" class="form-control" value="{{ invoice.delivery_date.strftime('%Y-%m-%d') }}">
-      </div>
+        <input name="delivery_date" type="date" class="form-control" value="{{ invoice.delivery_date.strftime('%Y-%m-%d') if invoice.delivery_date else '' }}">      </div>
       <div class="col-md-3">
         <label class="form-label">Splatnosť</label>
         <input name="due_date" type="date" class="form-control" value="{{ invoice.due_date.strftime('%Y-%m-%d') }}">

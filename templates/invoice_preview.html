@@ -45,7 +45,7 @@
         id="delivery_date"
         name="delivery_date"
         class="form-control"
-        value="{{ db_json.delivery_date or '' }}"
+        value="{{ db_json.delivery_date if db_json.delivery_date else '' }}"
       >
     </div>
 

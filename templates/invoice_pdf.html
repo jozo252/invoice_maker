@@ -365,9 +365,10 @@
           <small class="muted">Dátum vystavenia</small><br>
           <strong>{{ invoice.date.strftime('%d.%m.%Y') }}</strong>
         </td>
+        
         <td>
           <small class="muted">Dátum dodania</small><br>
-          <strong>{{ invoice.delivery_date.strftime('%d.%m.%Y') }}</strong>
+          <strong>{{ invoice.delivery_date.strftime('%d.%m.%Y') if invoice.delivery_date else invoice.issue_date.strftime('%d.%m.%Y') }}</strong>
         </td>
         <td>
           <small class="muted">Dátum splatnosti</small><br>
