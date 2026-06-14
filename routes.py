@@ -584,6 +584,7 @@ def create_invoice_from_ai_data(data):
         invoice_number=generate_invoice_number(),
         date=datetime.strptime(invoice_data["date"], "%Y-%m-%d").date(),
         due_date=datetime.strptime(invoice_data["due_date"], "%Y-%m-%d").date(),
+        delivery_date=datetime.strptime(invoice_data["date"], "%Y-%m-%d").date(),
         currency=invoice_data["currency"],
         total_cost=total_cost,
         discount_total=discount_total,
@@ -856,6 +857,7 @@ def add_invoice():
         try:
             date_obj = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
             due_obj  = datetime.strptime(request.form['due_date'], '%Y-%m-%d').date()
+
         except Exception:
             flash('Dátum alebo splatnosť sú neplatné.', 'danger')
             return render_template('add_invoice.html', clients=clients, companies=companies)
@@ -880,10 +882,14 @@ def add_invoice():
         discount_total = Decimal(str(request.form.get('discount_total') or '0')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         if discount_total < Decimal('0.00'):
             discount_total = Decimal('0.00')
+
+        delivery_date = datetime.strptime(request.form['delivery_date'], '%Y-%m-%d').date() if request.form['delivery_date'] else date_obj
+        
         invoice = Invoice(
             invoice_number=invoice_number,
             variable_symbol=variable_symbol,
             date=date_obj,
+            delivery_date=delivery_date,
             due_date=due_obj,
             currency=request.form['currency'],
             vat_rate=vat_rate,
@@ -1020,6 +1026,7 @@ def edit_invoice(invoice_id):
         # Basic fields
         inv.invoice_number = request.form.get("invoice_number", inv.invoice_number)
         inv.date = _parse_date(request.form.get("date"), inv.date)
+        inv.delivery_date = _parse_date(request.form.get("delivery_date"), inv.delivery_date)
         inv.due_date = _parse_date(request.form.get("due_date"), inv.due_date)
         inv.payment_method = request.form.get("payment_method") or inv.payment_method
         inv.variable_symbol = request.form.get("variable_symbol") or inv.variable_symbol

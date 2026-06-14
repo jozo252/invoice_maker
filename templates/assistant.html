@@ -1,0 +1,420 @@
+{% extends "base.html" %}
+
+{% block title %}AI Asistent | InvoiceMakerAI{% endblock %}
+
+{% block content %}
+<input type="hidden" id="csrfToken" value="{{ csrf_token() }}">
+<div class="page-header d-print-none mb-3">
+  <div class="row align-items-center">
+    <div class="col">
+      <div class="page-pretitle">
+        Firemný asistent
+      </div>
+      <h2 class="page-title">
+        <i class="ti ti-robot me-2"></i>
+        AI Asistent
+      </h2>
+      <div class="text-secondary mt-1">
+        Pracuj s faktúrami, klientmi a zákazkami cez jednoduché príkazy.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+
+  <!-- Ľavý panel -->
+  <div class="col-12 col-lg-4 col-xl-3">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="ti ti-bolt me-2"></i>
+          Rýchle príkazy
+        </h3>
+      </div>
+
+      <div class="card-body">
+        <div class="d-grid gap-2">
+          <button type="button" class="btn btn-outline-primary text-start" onclick="useQuickCommand('Kto mi dlhuje peniaze?')">
+            <i class="ti ti-cash me-2"></i>
+            Kto mi dlhuje peniaze?
+          </button>
+
+          <button type="button" class="btn btn-outline-primary text-start" onclick="useQuickCommand('Ukáž faktúry po splatnosti')">
+            <i class="ti ti-alert-circle me-2"></i>
+            Faktúry po splatnosti
+          </button>
+
+          <button type="button" class="btn btn-outline-secondary text-start" onclick="useQuickCommand('Nájdi klienta ')">
+            <i class="ti ti-user-search me-2"></i>
+            Nájdi klienta
+          </button>
+
+          <button type="button" class="btn btn-outline-secondary text-start" onclick="useQuickCommand('Priprav upomienku pre ')">
+            <i class="ti ti-mail me-2"></i>
+            Priprav upomienku
+          </button>
+
+          <button type="button" class="btn btn-outline-secondary text-start" onclick="useQuickCommand('Nájdi zákazku ')">
+            <i class="ti ti-briefcase me-2"></i>
+            Nájdi zákazku
+          </button>
+
+          <button type="button" class="btn btn-outline-secondary text-start" onclick="useQuickCommand('Zhrň zákazku ')">
+            <i class="ti ti-notes me-2"></i>
+            Zhrň zákazku
+          </button>
+        </div>
+
+        <div class="alert alert-warning mt-3 mb-0">
+          <div class="d-flex">
+            <div>
+              <i class="ti ti-shield-lock me-2"></i>
+            </div>
+            <div>
+              <strong>Bezpečnostné pravidlo:</strong><br>
+              Email sa nemá odoslať bez tvojho potvrdenia.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat -->
+  <div class="col-12 col-lg-8 col-xl-9">
+    <div class="card assistant-chat-card">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="ti ti-message-chatbot me-2"></i>
+          Chat
+        </h3>
+      </div>
+
+      <div id="chatBox" class="card-body assistant-chat-box">
+        <div class="chat-message ai-message">
+          <div class="chat-avatar">
+            <i class="ti ti-robot"></i>
+          </div>
+
+          <div class="chat-bubble">
+            <div class="chat-label">AI Asistent</div>
+            <div class="chat-content">
+              Ahoj. Môžeš sa ma opýtať napríklad:<br>
+              <strong>„Kto mi dlhuje peniaze?“</strong><br>
+              alebo<br>
+              <strong>„Priprav upomienku pre Fepal“</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-footer">
+        <form id="chatForm">
+          <div class="input-group">
+            <textarea
+              id="messageInput"
+              class="form-control"
+              rows="2"
+              placeholder="Napíš príkaz..."
+              required
+            ></textarea>
+
+            <button id="sendButton" class="btn btn-primary" type="submit">
+              <i class="ti ti-send me-1"></i>
+              Odoslať
+            </button>
+          </div>
+
+          <div class="form-hint mt-2">
+            Enter odošle správu, Shift + Enter pridá nový riadok.
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<style>
+  .assistant-chat-card {
+    min-height: 68vh;
+  }
+
+  .assistant-chat-box {
+    height: 52vh;
+    min-height: 420px;
+    overflow-y: auto;
+    background: var(--tblr-bg-surface-secondary);
+  }
+
+  .chat-message {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .chat-message.user-message {
+    justify-content: flex-end;
+  }
+
+  .chat-message.user-message .chat-avatar {
+    order: 2;
+    background: var(--tblr-primary);
+    color: #fff;
+  }
+
+  .chat-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--tblr-bg-surface);
+    border: 1px solid var(--tblr-border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .chat-bubble {
+    max-width: 78%;
+  }
+
+  .chat-message.user-message .chat-bubble {
+    text-align: right;
+  }
+
+  .chat-label {
+    font-size: 0.75rem;
+    color: var(--tblr-muted);
+    margin-bottom: 0.25rem;
+  }
+
+  .chat-content {
+    display: inline-block;
+    padding: 0.75rem 0.9rem;
+    border-radius: 14px;
+    background: var(--tblr-bg-surface);
+    border: 1px solid var(--tblr-border-color);
+    color: var(--tblr-body-color);
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.5;
+    text-align: left;
+  }
+
+  .user-message .chat-content {
+    background: var(--tblr-primary);
+    border-color: var(--tblr-primary);
+    color: #fff;
+  }
+
+  .typing .chat-content {
+    color: var(--tblr-muted);
+    font-style: italic;
+  }
+
+  @media (max-width: 767.98px) {
+    .assistant-chat-card {
+      min-height: auto;
+    }
+
+    .assistant-chat-box {
+      height: 58vh;
+      min-height: 360px;
+    }
+
+    .chat-bubble {
+      max-width: 86%;
+    }
+
+    .input-group {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .input-group > .form-control,
+    .input-group > .btn {
+      width: 100%;
+      border-radius: var(--tblr-border-radius) !important;
+    }
+  }
+</style>
+
+<script>
+  const csrfToken = document.getElementById("csrfToken").value;
+  const chatForm = document.getElementById("chatForm");
+  const messageInput = document.getElementById("messageInput");
+  const chatBox = document.getElementById("chatBox");
+  const sendButton = document.getElementById("sendButton");
+
+  chatForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    const message = messageInput.value.trim();
+
+    if (!message) {
+      return;
+    }
+
+    addMessage("Ty", message, "user-message", "ti-user");
+
+    messageInput.value = "";
+    sendButton.disabled = true;
+    sendButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Čakám...';
+
+    const typingId = addTypingMessage();
+
+    try {
+ const response = await fetch("{{ url_for('assistant.chat') }}", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-CSRFToken": csrfToken
+  },
+  body: JSON.stringify({
+    message: message
+  })
+});
+
+  const rawText = await response.text();
+
+  let data;
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    throw new Error("Server nevrátil JSON. Odpoveď servera: " + rawText.slice(0, 300));
+  }
+
+  removeTypingMessage(typingId);
+
+  if (!response.ok) {
+    addMessage(
+      "AI Asistent",
+      data.detail || data.error || "HTTP chyba: " + response.status,
+      "ai-message",
+      "ti-robot"
+    );
+    return;
+  }
+
+  addMessage(
+    "AI Asistent",
+    data.answer || "Bez odpovede.",
+    "ai-message",
+    "ti-robot"
+  );
+
+} catch (error) {
+  removeTypingMessage(typingId);
+
+  addMessage(
+    "AI Asistent",
+    "Chyba: " + error.message,
+    "ai-message",
+    "ti-robot"
+  );
+
+  console.error(error);
+}finally {
+      sendButton.disabled = false;
+      sendButton.innerHTML = '<i class="ti ti-send me-1"></i> Odoslať';
+      messageInput.focus();
+    }
+  });
+
+  messageInput.addEventListener("keydown", function (event) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      chatForm.dispatchEvent(new Event("submit"));
+    }
+  });
+
+  function useQuickCommand(command) {
+    messageInput.value = command;
+    messageInput.focus();
+  }
+
+  function addMessage(label, content, className, iconClass) {
+    const wrapper = document.createElement("div");
+    wrapper.classList.add("chat-message", className);
+
+    const avatar = document.createElement("div");
+    avatar.classList.add("chat-avatar");
+
+    const icon = document.createElement("i");
+    icon.classList.add("ti", iconClass);
+    avatar.appendChild(icon);
+
+    const bubble = document.createElement("div");
+    bubble.classList.add("chat-bubble");
+
+    const labelDiv = document.createElement("div");
+    labelDiv.classList.add("chat-label");
+    labelDiv.innerText = label;
+
+    const contentDiv = document.createElement("div");
+    contentDiv.classList.add("chat-content");
+    contentDiv.innerText = content;
+
+    bubble.appendChild(labelDiv);
+    bubble.appendChild(contentDiv);
+
+    wrapper.appendChild(avatar);
+    wrapper.appendChild(bubble);
+
+    chatBox.appendChild(wrapper);
+    scrollChatToBottom();
+  }
+
+  function addTypingMessage() {
+    const id = "typing-" + Date.now();
+
+    const wrapper = document.createElement("div");
+    wrapper.classList.add("chat-message", "ai-message", "typing");
+    wrapper.id = id;
+
+    const avatar = document.createElement("div");
+    avatar.classList.add("chat-avatar");
+
+    const icon = document.createElement("i");
+    icon.classList.add("ti", "ti-robot");
+    avatar.appendChild(icon);
+
+    const bubble = document.createElement("div");
+    bubble.classList.add("chat-bubble");
+
+    const labelDiv = document.createElement("div");
+    labelDiv.classList.add("chat-label");
+    labelDiv.innerText = "AI Asistent";
+
+    const contentDiv = document.createElement("div");
+    contentDiv.classList.add("chat-content");
+    contentDiv.innerText = "Premýšľam...";
+
+    bubble.appendChild(labelDiv);
+    bubble.appendChild(contentDiv);
+
+    wrapper.appendChild(avatar);
+    wrapper.appendChild(bubble);
+
+    chatBox.appendChild(wrapper);
+    scrollChatToBottom();
+
+    return id;
+  }
+
+  function removeTypingMessage(id) {
+    const element = document.getElementById(id);
+
+    if (element) {
+      element.remove();
+    }
+  }
+
+  function scrollChatToBottom() {
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+</script>
+
+{% endblock %}

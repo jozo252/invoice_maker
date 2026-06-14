@@ -21,3 +21,4 @@ uploads/
 
 
 *.pyd
+OPENAI_API_KEY

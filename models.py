@@ -9,7 +9,30 @@ from sqlalchemy.orm import validates
 from sqlalchemy import Numeric
 
 
+class EmailLog(db.Model):
+    __tablename__ = "email_logs"
 
+    id = db.Column(db.Integer, primary_key=True)
+
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    client_id = db.Column(db.Integer, db.ForeignKey("clients.id"), nullable=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey("invoices.id"), nullable=True)
+    job_id = db.Column(db.Integer, db.ForeignKey("jobs.id"), nullable=True)
+
+    to_email = db.Column(db.String(255), nullable=False)
+    subject = db.Column(db.String(255), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+
+    status = db.Column(db.String(50), nullable=False, default="draft")
+    # draft / sent / failed
+
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    sent_at = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship("User", backref=db.backref("email_logs", lazy=True))
+    client = db.relationship("Client", backref=db.backref("email_logs", lazy=True))
+    invoice = db.relationship("Invoice", backref=db.backref("email_logs", lazy=True))
+    job = db.relationship("Job", backref=db.backref("email_logs", lazy=True))
 
 class User(db.Model,UserMixin):
     __tablename__ = 'users'
@@ -88,6 +111,7 @@ class Invoice(db.Model):
         invoice_number = db.Column(db.String(50), nullable=False)
         variable_symbol = db.Column(db.String(20), nullable=True)
         date = db.Column(db.Date, nullable=False)
+        delivery_date = db.Column(db.Date, nullable=True)
         due_date = db.Column(db.Date, nullable=False)
         user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
         user = db.relationship('User', backref=db.backref('invoices', lazy=True))

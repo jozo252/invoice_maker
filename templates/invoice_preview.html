@@ -38,6 +38,16 @@
         value="{{ db_json.inv_date or '' }}"
       >
     </div>
+    <div class="col-md-4 mb-3">
+      <label for="delivery_date" class="form-label">Dátum dodania</label>
+      <input
+        type="date"
+        id="delivery_date"
+        name="delivery_date"
+        class="form-control"
+        value="{{ db_json.delivery_date or '' }}"
+      >
+    </div>
 
     <div class="col-md-4 mb-3">
       <label for="due_date" class="form-label">Dátum splatnosti</label>

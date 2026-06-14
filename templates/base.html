@@ -285,7 +285,15 @@
 
         <div class="sidebar-section-label">AI nástroje</div>
 
+        
+
         <nav class="sidebar-nav">
+          <a href="{{ url_for('assistant.assistant_page') }}"
+            class="sidebar-link {% if current_endpoint.startswith('assistant.') %}active{% endif %}">
+            <i class="ti ti-message-chatbot"></i>
+            <span>AI Asistent</span>
+          </a>
+
           <a href="{{ url_for('aibot.ai_bot') }}"
              class="sidebar-link {% if current_endpoint == 'aibot.ai_bot' %}active{% endif %}">
             <i class="ti ti-sparkles"></i>
@@ -395,6 +403,14 @@
         <div class="sidebar-section-label">AI nástroje</div>
 
         <nav class="sidebar-nav">
+
+          <a href="{{ url_for('assistant.assistant_page') }}"
+            class="sidebar-link {% if current_endpoint.startswith('assistant.') %}active{% endif %}">
+            <i class="ti ti-message-chatbot"></i>
+            <span>AI Asistent</span>
+          </a>
+
+          
           <a href="{{ url_for('aibot.ai_bot') }}"
              class="sidebar-link {% if current_endpoint == 'aibot.ai_bot' %}active{% endif %}">
             <i class="ti ti-sparkles"></i>
@@ -412,6 +428,8 @@
             <i class="ti ti-robot"></i>
             <span>ReplyBot</span>
           </a>
+          
+
         </nav>
 
         <div class="sidebar-section-label">Účet</div>

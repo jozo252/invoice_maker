@@ -11,7 +11,6 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 import sqlite3
 from models import User  # <--- import User model here to avoid circular imports
-import models
 
 csrf = CSRFProtect()
 
@@ -72,9 +71,11 @@ def create_app():
     from aibot_routes import aibot as aibot_bp
     from offers import offers
     from jobs.routes import jobs_bp
+    from assistant.routes import assistant_bp
     app.register_blueprint(main_blueprint)
     app.register_blueprint(aibot_bp)
     app.register_blueprint(offers)
     app.register_blueprint(jobs_bp)
+    app.register_blueprint(assistant_bp)
 
     return app
