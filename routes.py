@@ -107,7 +107,6 @@ def priceing():
 @main.route('/webhook', methods=['POST'])
 def stripe_webhook():
     stripe.api_key = current_app.config["STRIPE_API_KEY"]
-    print(stripe.api_key)
     payload = request.data
     sig_header = request.headers.get("Stripe-Signature", "")
     endpoint_secret = current_app.config["STRIPE_WEBHOOK_SECRET"]
@@ -1181,6 +1180,7 @@ def delete_invoice(invoice_id):
 
 
 @main.route("/test_email")
+@login_required
 def test_email():
     try:
         send_email_offer(

@@ -1,0 +1,2 @@
+-r requirements
+pytest==8.4.2
