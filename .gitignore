@@ -1,22 +1,18 @@
-cat > .gitignore <<'EOF'
 # Python cache
 __pycache__/
-*.pyc
+*.py[cod]
 
 # Virtual env
 venv/
-.venv
 .venv/
 # Local secrets & DB
 .env
 instance/*.db
-EOF
+*.db
 
 uploads/
 *.tar.gz
 *.tar.gz
-*.pyc
-*.pyc
 *.ini
 
 

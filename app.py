@@ -46,6 +46,23 @@ def create_app():
     app.config["STRIPE_PRODUCT_ID"] = os.getenv("STRIPE_PRODUCT_ID")
     app.config["SUCCESS_URL"] = os.getenv("SUCCESS_URL")    
     app.config["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+    app.config["VEDUCI_INTEGRATION_TOKEN"] = os.getenv("VEDUCI_INTEGRATION_TOKEN")
+    integration_user_id = os.getenv("VEDUCI_INTEGRATION_USER_ID")
+    try:
+        app.config["VEDUCI_INTEGRATION_USER_ID"] = (
+            int(integration_user_id) if integration_user_id else None
+        )
+    except ValueError as exc:
+        raise RuntimeError("VEDUCI_INTEGRATION_USER_ID must be an integer") from exc
+
+    token = app.config["VEDUCI_INTEGRATION_TOKEN"]
+    user_id = app.config["VEDUCI_INTEGRATION_USER_ID"]
+    if bool(token) != bool(user_id):
+        raise RuntimeError(
+            "VEDUCI_INTEGRATION_TOKEN and VEDUCI_INTEGRATION_USER_ID must be configured together"
+        )
+    if token and len(token) < 32:
+        raise RuntimeError("VEDUCI_INTEGRATION_TOKEN must contain at least 32 characters")
     app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024
 
     #-------------------------------------------------------------------stamp
@@ -72,10 +89,12 @@ def create_app():
     from offers import offers
     from jobs.routes import jobs_bp
     from assistant.routes import assistant_bp
+    from integrations.routes import integrations_bp
     app.register_blueprint(main_blueprint)
     app.register_blueprint(aibot_bp)
     app.register_blueprint(offers)
     app.register_blueprint(jobs_bp)
     app.register_blueprint(assistant_bp)
+    app.register_blueprint(integrations_bp)
 
     return app

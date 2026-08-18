@@ -16,7 +16,6 @@ from flask import (
 )
 from flask_login import login_required, current_user
 from flask_mail import Message
-from matplotlib.pylab import rint
 from ai import call_llm_extract_offer, call_llm_generate_offer_description
 from app import db
 from models import Job, Lead, Offer, Invoice,Company,Client
