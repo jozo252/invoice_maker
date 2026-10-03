@@ -83,6 +83,8 @@
                                         <span class="badge bg-purple-lt">Ponuka</span>
                                     {% elif job.status == "approved" %}
                                         <span class="badge bg-green-lt">Schválená</span>
+                                    {% elif job.status == "in_progress" %}
+                                        <span class="badge bg-blue-lt">Realizácia</span>
                                     {% elif job.status == "done" %}
                                         <span class="badge bg-teal-lt">Hotová</span>
                                     {% elif job.status == "invoiced" %}

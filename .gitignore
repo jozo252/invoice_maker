@@ -7,9 +7,8 @@ venv/
 .venv/
 # Local secrets & DB
 .env
-instance/*.db
 *.db
-
+instance/*.db
 uploads/
 *.tar.gz
 *.tar.gz
@@ -18,3 +17,12 @@ uploads/
 
 *.pyd
 OPENAI_API_KEY
+
+# Craftspeople CRM local preview
+/instance/crm_local/
+/instance/crm_pilot/
+/instance/private_receipts/
+/instance/private_job_attachments/
+/static/crm/vendor/ocr/
+/work/
+*.sqlite3

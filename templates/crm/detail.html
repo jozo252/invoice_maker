@@ -1,0 +1,109 @@
+{% extends 'crm/base.html' %}
+{% block content %}
+<a class="back" href="{{ url_for('crm.index') }}">← Všetky zákazky</a>
+<div class="heading">
+  <div>
+    <p class="eyebrow">DETAIL ZÁKAZKY</p>
+    <h1>{{ job.title }}</h1>
+    <p>{{ job.client.name if job.client else 'Bez zákazníka' }} · {{ crm_statuses.get(job.status, job.status) }}</p>
+  </div>
+</div>
+
+<div class="metrics">
+  <div><span>Dohodnutá cena</span><strong>{{ job_plan.agreed_price_cents|crm_money if job_plan and job_plan.agreed_price_cents is not none else 'Nezadaná' }}</strong></div>
+  <div><span>Potvrdené náklady z bločkov</span><strong>{{ receipt_total_cents|crm_money }}</strong></div>
+  <div><span>Zostatok pred ďalšími nákladmi</span><strong>{{ (job_plan.agreed_price_cents-receipt_total_cents)|crm_money if job_plan and job_plan.agreed_price_cents is not none else '—' }}</strong></div>
+</div>
+
+<div class="detail-grid">
+  <div>
+    <section class="panel padded">
+      <h2>Informácie o zákazke</h2>
+      <dl class="job-info">
+        <div><dt>Zákazník</dt><dd>{{ job.client.name if job.client else 'Neuvedený' }}</dd></div>
+        <div><dt>Telefón</dt><dd>{{ job.client.phone if job.client and job.client.phone else 'Neuvedený' }}</dd></div>
+        <div><dt>E-mail</dt><dd>{{ job.client.email if job.client and job.client.email else 'Neuvedený' }}</dd></div>
+        <div><dt>Termín</dt><dd>{{ job_plan.due_date.strftime('%d. %m. %Y') if job_plan and job_plan.due_date else 'Nezadaný' }}</dd></div>
+        <div><dt>Založená</dt><dd>{{ job.created_at.strftime('%d. %m. %Y') if job.created_at else 'Neuvedené' }}</dd></div>
+        <div class="job-info-wide"><dt>Poznámky / miesto realizácie</dt><dd class="pre-wrap">{{ job.description or 'Bez poznámok' }}</dd></div>
+      </dl>
+    </section>
+
+    <section class="panel padded mt" id="notes">
+      <h2>Priebežné poznámky <span class="count">{{ job_notes|length }}</span></h2>
+      <form class="form" method="post" action="{{ url_for('crm.add_note', job_id=job.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="job-note-content">Nová poznámka k zákazke</label>
+        <textarea id="job-note-content" name="content" maxlength="3000" rows="4" required placeholder="Čo sa dohodlo alebo urobilo?">{{ note_draft }}</textarea>
+        <div class="note-tools">
+          <button class="btn" id="voice-note-button" type="button" aria-pressed="false" hidden>🎙 Diktovať po slovensky</button>
+          <span class="help" id="voice-note-status" role="status" aria-live="polite"></span>
+        </div>
+        <p class="help">Pri diktovaní môže prehliadač spracovať zvuk online. Audio sa do CRM neukladá. Prepis pred uložením skontrolujte.</p>
+        {% if note_error %}<p class="notice error" role="alert">{{ note_error }}</p>{% endif %}
+        <button class="btn dark">Uložiť poznámku</button>
+      </form>
+      {% if job_notes %}
+      <div class="note-list">
+        {% for note in job_notes %}
+        <article class="note-item">
+          <time datetime="{{ note.created_at.isoformat() ~ 'Z' if note.created_at else '' }}">{{ note.created_at|crm_datetime }}</time>
+          <p class="pre-wrap">{{ note.content }}</p>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="help note-empty">Zatiaľ tu nie je priebežný zápis.</p>
+      {% endif %}
+    </section>
+
+    <section class="panel mt">
+      <div class="section-heading"><h2>Bločky a náklady</h2><span class="count">{{ job_receipts|length }}</span></div>
+      {% for row in job_receipts %}
+      <a class="job-row" href="{{ url_for('crm.receipt', receipt_id=row.id) }}">
+        <div>
+          <strong>{{ row.vendor or row.original_name }}</strong>
+          <p>{{ row.receipt_date.strftime('%d. %m. %Y') if row.receipt_date else 'Dátum zatiaľ nepotvrdený' }}</p>
+        </div>
+        <div class="row-end">
+          <span class="badge {{ 'warning' if row.status=='draft' else '' }}">{{ 'Čaká na kontrolu' if row.status=='draft' else 'Potvrdený' }}</span>
+          <strong>{{ row.amount_cents|crm_money if row.status=='confirmed' else '—' }}</strong>
+          <span aria-hidden="true">›</span>
+        </div>
+      </a>
+      {% else %}
+      <div class="empty"><h3>Zatiaľ tu nie sú bločky.</h3><p>Prvý bloček nahráte cez formulár.</p></div>
+      {% endfor %}
+    </section>
+  </div>
+
+  <aside>
+    <section class="panel padded">
+      <h2>Pridať bloček</h2>
+      <form class="form" method="post" enctype="multipart/form-data" action="{{ url_for('crm.upload', job_id=job.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>Fotografia bločka<input type="file" name="file" accept="image/jpeg,image/png,image/webp" required></label>
+        <p class="help">JPG, PNG alebo WebP · najviac 8 MB. PDF a HEIC zatiaľ nepodporujeme.</p>
+        <button class="btn dark">Nahrať a skontrolovať</button>
+      </form>
+    </section>
+
+    <section class="panel padded mt">
+      <h2>Stav zákazky</h2>
+      <form method="post" class="form" action="{{ url_for('crm.status', job_id=job.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>Aktuálny stav
+          <select name="status">
+            {% for value, label in crm_statuses.items() %}
+            <option value="{{ value }}" {% if job.status==value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button class="btn">Uložiť stav</button>
+      </form>
+      <p class="help mt">Zostatok nezohľadňuje vašu prácu, dopravu ani odvody. Nie je to čistý zisk.</p>
+    </section>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='crm/job-notes.js') }}" defer></script>{% endblock %}

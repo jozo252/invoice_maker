@@ -223,7 +223,7 @@
     <aside class="app-sidebar d-none d-md-block">
       <div class="app-sidebar-inner">
 
-        <a class="app-brand" href="{{ url_for('main.dashboard') }}">
+        <a class="app-brand" href="{{ url_for('workboard.today') }}">
           <span class="app-brand-icon">
             <i class="ti ti-file-dollar"></i>
           </span>
@@ -233,10 +233,15 @@
         <div class="sidebar-section-label">Hlavné</div>
 
         <nav class="sidebar-nav">
-          <a href="{{ url_for('main.dashboard') }}"
-             class="sidebar-link {% if current_endpoint == 'main.dashboard' %}active{% endif %}">
+          <a href="{{ url_for('crm.index') }}"
+             class="sidebar-link {% if current_endpoint.startswith('crm.') %}active{% endif %}">
+            <i class="ti ti-receipt"></i>
+            <span>CRM a bločky</span>
+          </a>
+          <a href="{{ url_for('workboard.today') }}"
+             class="sidebar-link {% if current_endpoint == 'workboard.today' %}active{% endif %}">
             <i class="ti ti-layout-dashboard"></i>
-            <span>Prehľad</span>
+            <span>Dnes</span>
           </a>
 
           <a href="{{ url_for('jobs.jobs_list') }}"
@@ -345,10 +350,15 @@
         <div class="sidebar-section-label pt-0">Hlavné</div>
 
         <nav class="sidebar-nav">
-          <a href="{{ url_for('main.dashboard') }}"
-             class="sidebar-link {% if current_endpoint == 'main.dashboard' %}active{% endif %}">
+          <a href="{{ url_for('crm.index') }}"
+             class="sidebar-link {% if current_endpoint.startswith('crm.') %}active{% endif %}">
+            <i class="ti ti-receipt"></i>
+            <span>CRM a bločky</span>
+          </a>
+          <a href="{{ url_for('workboard.today') }}"
+             class="sidebar-link {% if current_endpoint == 'workboard.today' %}active{% endif %}">
             <i class="ti ti-layout-dashboard"></i>
-            <span>Prehľad</span>
+            <span>Dnes</span>
           </a>
 
           <a href="{{ url_for('jobs.jobs_list') }}"
@@ -468,7 +478,7 @@
           <i class="ti ti-menu-2"></i>
         </button>
 
-        <a href="{{ url_for('main.dashboard') }}" class="mobile-brand">
+        <a href="{{ url_for('workboard.today') }}" class="mobile-brand">
           InvoiceMakerAI
         </a>
 

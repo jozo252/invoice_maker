@@ -1,12 +1,11 @@
 # app.py
-from flask import Flask
+from flask import Flask, abort, request
 from extensions import db, mail  # <--- import from extensions
 import os
 from dotenv import load_dotenv
 from flask_migrate import Migrate
 from flask_wtf import CSRFProtect
 from flask_login import LoginManager
-from flask_wtf import CSRFProtect
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 import sqlite3
@@ -27,14 +26,14 @@ def _set_sqlite_pragma(dbapi_connection, connection_record):
 
 load_dotenv()  # Load environment variables from .env file
 login_manager=LoginManager()
-def create_app():
+def create_app(test_config=None):
     app = Flask(__name__)
     
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///invoices.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
-    app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT'))
-    app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS').lower() == 'true'
+    app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT') or '587')
+    app.config['MAIL_USE_TLS'] = (os.getenv('MAIL_USE_TLS') or 'false').lower() == 'true'
     app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
     app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
     app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
@@ -64,6 +63,8 @@ def create_app():
     if token and len(token) < 32:
         raise RuntimeError("VEDUCI_INTEGRATION_TOKEN must contain at least 32 characters")
     app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024
+    if test_config:
+        app.config.update(test_config)
 
     #-------------------------------------------------------------------stamp
 
@@ -80,6 +81,13 @@ def create_app():
     login_manager.init_app(app)
     login_manager.login_view = 'main.login'  # redirect here if @login_required fails
 
+    @app.before_request
+    def protect_legacy_job_uploads():
+        # The Flask static route must not expose old job files without owner
+        # checks. Deployments serving /static directly need the same deny rule.
+        if request.endpoint == 'static' and request.path.startswith('/static/uploads/jobs/'):
+            abort(404)
+
     @login_manager.user_loader
     def load_user(user_id):
             return User.query.get(int(user_id))
@@ -89,12 +97,18 @@ def create_app():
     from offers import offers
     from jobs.routes import jobs_bp
     from assistant.routes import assistant_bp
+    from crm.routes import crm_bp
+    from workboard import workboard
+    from pricebook import pricebook
     from integrations.routes import integrations_bp
     app.register_blueprint(main_blueprint)
     app.register_blueprint(aibot_bp)
     app.register_blueprint(offers)
     app.register_blueprint(jobs_bp)
     app.register_blueprint(assistant_bp)
+    app.register_blueprint(crm_bp)
+    app.register_blueprint(workboard)
+    app.register_blueprint(pricebook)
     app.register_blueprint(integrations_bp)
 
     return app

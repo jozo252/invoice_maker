@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Faktúra zo zákazky{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center gap-2 mb-4"><div><h1 class="h2 mb-1">Vystaviť faktúru</h1><div class="text-muted">{{ job.title }} · prijatá ponuka {{ payload.offer_number }}, verzia {{ revision.version }}</div></div><a class="btn btn-outline-secondary" href="{{ url_for('jobs.job_detail', job_id=job.id) }}">Späť na zákazku</a></div>
+<div class="alert alert-warning">Skontroluj fakturačnú adresu, dátumy, DPH a položky. Systém kopíruje len potvrdenú verziu ponuky; daňový režim neurčuje automaticky.</div>
+<div class="row g-3"><div class="col-lg-7">
+  <div class="card mb-3"><div class="card-header">Položky z prijatej ponuky a dodatkov</div><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Popis</th><th class="text-end">Množstvo</th><th class="text-end">Cena</th><th class="text-end">Spolu</th></tr></thead><tbody>{% for item in payload['items'] %}<tr><td>{{ item.description }}{% if item.job_change_id is defined %} <span class="badge bg-success-lt">Dodatok</span>{% endif %}</td><td class="text-end">{{ item.quantity }} {{ item.unit }}</td><td class="text-end">{{ item.price_per_item }} €</td><td class="text-end">{{ item.total_cost }} €</td></tr>{% endfor %}</tbody></table></div><div class="card-body text-end">Pôvodná cena: {{ payload.base_total }} €<br>Odsúhlasené dodatky: {{ payload.extras_total }} €<br>Zľava v pôvodnej ponuke: {{ payload.discount_total }} €<br><strong>Spolu bez vybranej DPH: {{ payload.total }} €</strong></div></div>
+  <div class="card"><div class="card-header">Fakturačné strany</div><div class="card-body"><strong>{{ company.name }}</strong> → <strong>{{ client.name }}</strong><div class="mt-2">{{ client.street }}, {{ client.zip_code }} {{ client.city }}, {{ client.country }}</div><a href="{{ url_for('main.edit_client', client_id=client.id) }}">Upraviť klienta pred vystavením</a></div></div>
+</div><div class="col-lg-5"><div class="card"><div class="card-header">Údaje faktúry</div><div class="card-body">
+  <form method="POST" action="{{ url_for('jobs.job_invoice', job_id=job.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="form-label" for="issue_date">Dátum vystavenia</label><input class="form-control mb-2" type="date" id="issue_date" name="issue_date" value="{{ today.isoformat() }}" required>
+    <label class="form-label" for="delivery_date">Dátum dodania</label><input class="form-control mb-2" type="date" id="delivery_date" name="delivery_date" value="{{ today.isoformat() }}" required>
+    <label class="form-label" for="due_date">Splatnosť</label><input class="form-control mb-2" type="date" id="due_date" name="due_date" value="{{ suggested_due.isoformat() }}" required>
+    <label class="form-label" for="vat_rate">Sadzba DPH (%)</label><input class="form-control mb-2" type="number" step="0.01" min="0" max="100" id="vat_rate" name="vat_rate" placeholder="Zadaj podľa režimu tejto faktúry" required>
+    <div class="form-text mb-2">Platiteľ DPH: {{ 'áno' if company.is_vat_payer else 'nie' }}. Výber správnej sadzby a režimu je na tebe.</div>
+    <label class="form-label" for="payment_method">Spôsob úhrady</label><select class="form-select mb-3" id="payment_method" name="payment_method"><option value="bank_transfer">Bankový prevod</option><option value="cash">Hotovosť</option><option value="card">Karta</option><option value="other">Iné</option></select>
+    <label class="form-check mb-3"><input type="checkbox" class="form-check-input" name="confirmed" value="yes" required><span class="form-check-label">Skontroloval som fakturačné údaje a vystavenie faktúry</span></label>
+    <button type="submit" class="btn btn-primary">Vystaviť faktúru</button>
+  </form>
+</div></div></div></div>
+{% endblock %}

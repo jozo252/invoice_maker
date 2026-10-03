@@ -9,7 +9,7 @@
     <div>
         <h1 class="h2 mb-1">Upraviť ponuku #{{ offer.offer_number }}</h1>
         <div class="text-muted">
-            Uprav údaje, položky a potom ponuku ulož alebo premeň na faktúru.
+            Uprav kalkuláciu, ulož ju a potom potvrď presnú verziu pred odoslaním.
         </div>
     </div>
 
@@ -19,6 +19,9 @@
     </a>
 </div>
 
+{% if offer.lead_id %}<p><a href="{{ url_for('offers.lead_detail', lead_id=offer.lead_id) }}">Späť na dopyt</a></p>{% endif %}
+{% if offer.status == 'accepted' %}<div class="alert alert-success">Prijatá ponuka je uzamknutá. Zmenu rozsahu rieš novou dohodou.</div>{% endif %}
+{% if latest_revision %}<div class="alert alert-info">Posledná odoslaná verzia {{ latest_revision.version }} · {{ latest_revision.sent_at.strftime('%d.%m.%Y %H:%M') }} · {{ latest_revision.channel }}</div>{% endif %}
 <form method="POST" action="{{ url_for('offers.update_offer', offer_id=offer.id) }}" id="edit-offer-form">
     {{ form.hidden_tag() if form else "" }}
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -96,6 +99,7 @@
                             <tr>
                                 <th>Názov</th>
                                 <th class="text-end">Množstvo</th>
+                                <th>Jednotka</th>
                                 <th class="text-end">Cena za jednotku</th>
                                 <th class="text-end">Spolu</th>
                                 <th class="text-end">Akcia</th>
@@ -125,6 +129,7 @@
                                         required
                                     >
                                 </td>
+                                <td><input type="text" name="item_unit[]" class="form-control" value="{{ item.unit if item.unit is defined and item.unit else 'ks' }}" maxlength="20" required></td>
                                 <td>
                                     <input
                                         type="number"
@@ -203,36 +208,12 @@
                     </div>
                     <div class="card-body">
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-primary" {% if offer.status == 'accepted' %}disabled{% endif %}>
                                 <i class="ti ti-device-floppy me-1"></i>
                                 Uložiť zmeny
                             </button>
 
-                               <button
-                                type="submit"
-                                class="btn btn-outline-primary"
-                                formaction="{{ url_for('offers.from_offer_to_invoice', offer_id=offer.id) }}"
-                                formmethod="POST"
-                            >
-                                Vytvoriť faktúru
-                            </button>
-
-
-                                <button type="submit" class="btn btn-outline-secondary w-100" formaction="{{ url_for('offers.download_offer', offer_id=offer.id) }}" formmethod="GET">
-                                    <i class="ti ti-download me-1"></i>
-                                    Stiahnuť ponuku
-                                </button>
-
-                                <button type="submit" class="btn btn-outline-primary w-100" formaction="{{ url_for('offers.send_offer_email_route', offer_id=offer.id) }}" formmethod="POST">
-                                     
-                                    <i class="ti ti-mail me-1"> </i>
-                                    Odoslať e-mailom
-                                </button>
-
-                                <button type="submit" class="btn btn-outline-success w-100" formaction="{{ url_for('offers.mark_offer_accepted', offer_id=offer.id) }}" formmethod="POST">
-                                    <i class="ti ti-check me-1"></i>
-                                    Označiť ako prijatú
-                                </button>
+                            <a class="btn btn-outline-secondary" href="{{ url_for('offers.download_offer', offer_id=offer.id) }}">Stiahnuť PDF</a>
 
                             <a href="{{ url_for('offers.offers_list') }}" class="btn btn-outline-secondary">
                                 Späť na zoznam
@@ -244,6 +225,39 @@
         </div>
     </div>
 </form>
+
+<div class="row g-3 mt-1">
+  <div class="col-lg-6"><div class="card"><div class="card-header">Odoslanie ponuky</div><div class="card-body">
+    {% if offer.status != 'accepted' %}
+    <p class="small text-muted">Najprv ulož úpravy. Pred odoslaním skontroluj každú cenu, množstvo a zľavu.</p>
+    <form method="POST" action="{{ url_for('offers.send_offer_email_route', offer_id=offer.id) }}" class="mb-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="form-check mb-2"><input type="checkbox" class="form-check-input" name="prices_confirmed" value="yes" required><span class="form-check-label">Skontroloval som ceny a výpočet</span></label>
+      <button type="submit" class="btn btn-outline-primary" {% if not offer.customer_email %}disabled{% endif %}>Odoslať e-mailom</button>
+    </form>
+    <form method="POST" action="{{ url_for('offers.mark_offer_sent', offer_id=offer.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label for="delivery_note" class="form-label">Poslané inak: kanál a dátum</label><input id="delivery_note" name="delivery_note" class="form-control mb-2" placeholder="WhatsApp 3. 10. 2026" required>
+      <label class="form-check mb-2"><input type="checkbox" class="form-check-input" name="prices_confirmed" value="yes" required><span class="form-check-label">Skontroloval som ceny a výpočet</span></label>
+      <button type="submit" class="btn btn-outline-primary">Uložiť odoslanú verziu</button>
+    </form>
+    {% else %}<p class="mb-0">Ponuka bola prijatá.</p>{% endif %}
+  </div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header">Potvrdenie zákazníka</div><div class="card-body">
+    {% if offer.status == 'sent' and latest_revision %}
+    <form method="POST" action="{{ url_for('offers.mark_offer_accepted', offer_id=offer.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% if not offer.client_id %}
+        <label for="accept_client_id" class="form-label">Existujúci klient</label><select id="accept_client_id" name="client_id" class="form-select mb-2"><option value="">Vyber klienta</option>{% for client in clients %}<option value="{{ client.id }}">{{ client.name }}</option>{% endfor %}</select>
+        <label class="form-check mb-2"><input type="checkbox" class="form-check-input" name="create_client" value="yes"><span class="form-check-label">Alebo vytvoriť nového klienta z ponuky</span></label>
+      {% endif %}
+      <label for="acceptance_note" class="form-label">Ako a kedy potvrdil</label><input id="acceptance_note" name="acceptance_note" class="form-control mb-2" placeholder="E-mail 3. 10. 2026" required>
+      <button type="submit" class="btn btn-success">Prijať a vytvoriť zákazku</button>
+    </form>
+    {% elif offer.status == 'accepted' and offer.job_id %}<a class="btn btn-outline-success" href="{{ url_for('jobs.job_detail', job_id=offer.job_id) }}">Otvoriť zákazku</a>
+    {% else %}<p class="text-muted mb-0">Najprv odošli ponuku alebo zaznamenaj iný spôsob odoslania.</p>{% endif %}
+  </div></div></div>
+</div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -319,6 +333,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 <td>
                     <input type="number" step="0.01" min="0" name="item_quantity[]" class="form-control text-end qty-input" value="1" required>
                 </td>
+                <td><input type="text" name="item_unit[]" class="form-control" value="ks" maxlength="20" required></td>
                 <td>
                     <input type="number" step="0.01" min="0" name="item_price_per_item[]" class="form-control text-end price-input" value="0" required>
                 </td>

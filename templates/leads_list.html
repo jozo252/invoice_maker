@@ -1,32 +1,24 @@
-{% extends base.html %}
+{% extends "base.html" %}
+{% block title %}Dopyty{% endblock %}
 {% block content %}
-<h1>Leads</h1>
-
-<table>
-  <thead>
-    <tr>
-      <th>Meno</th>
-      <th>Email</th>
-      <th>Popis</th>
-      <th>Status</th>
-      <th>Vytvorené</th>
-      <th>Akcie</th>
-    </tr>
-  </thead>
+<div class="d-flex justify-content-between align-items-center mb-4 gap-2">
+  <div><h1 class="h2 mb-1">Dopyty</h1><div class="text-muted">Kto čaká na odpoveď a čo je ďalší krok.</div></div>
+  <a class="btn btn-primary" href="{{ url_for('offers.new_lead') }}">Nový dopyt</a>
+</div>
+<div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+  <thead><tr><th>Zákazník</th><th>Práca a miesto</th><th>Stav</th><th>Ďalší krok</th><th></th></tr></thead>
   <tbody>
-    {% for lead in leads %}
-    <tr>
-      <td>{{ lead.customer_name or "-" }}</td>
-      <td>{{ lead.customer_email or "-" }}</td>
-      <td>{{ (lead.description or "")[:80] }}</td>
-      <td>{{ lead.status }}</td>
-      <td>{{ lead.created_at.strftime("%d.%m.%Y %H:%M") if lead.created_at else "-" }}</td>
-      <td>
-        <a href="{{ url_for('leads.edit_lead', lead_id=lead.id) }}">Edit</a>
-        <a href="{{ url_for('offers.generate_offer_from_lead', lead_id=lead.id) }}">Vytvoriť ponuku</a>
-      </td>
-    </tr>
-    {% endfor %}
+  {% for lead in leads %}
+  <tr>
+    <td><strong>{{ lead.customer_name or lead.name }}</strong><div class="small text-muted">{{ lead.customer_phone or lead.customer_email or 'Bez kontaktu' }}</div></td>
+    <td>{{ lead.name }}{% if lead.site %}<div class="small text-muted">{{ lead.site.street or '' }} {{ lead.site.city or '' }}</div>{% endif %}</td>
+    <td>{{ lead.status }}</td>
+    <td>{{ lead.next_action or '—' }}{% if lead.next_action_due %}<div class="small text-muted">{{ lead.next_action_due.strftime('%d.%m.%Y') }}</div>{% endif %}</td>
+    <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{{ url_for('offers.lead_detail', lead_id=lead.id) }}">Otvoriť</a></td>
+  </tr>
+  {% else %}
+  <tr><td colspan="5" class="text-muted p-4">Zatiaľ žiadne dopyty.</td></tr>
+  {% endfor %}
   </tbody>
-</table>
+</table></div></div>
 {% endblock %}

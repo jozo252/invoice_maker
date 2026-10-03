@@ -1,0 +1,51 @@
+{% extends 'crm/base.html' %}
+{% block content %}
+<div class="heading">
+  <div>
+    <p class="eyebrow">OD DOPYTU PO ODOVZDANIE</p>
+    <h1>Vaše zákazky</h1>
+    <p>Každú kartu otvoríte do detailu zákazky.</p>
+  </div>
+  <a class="btn primary" href="{{ url_for('crm.create_job') }}">+ Nová zákazka</a>
+</div>
+
+<div class="metrics">
+  <div><span>Aktívne zákazky</span><strong>{{ jobs|rejectattr('status','in',['done','invoiced','cancelled'])|list|length }}</strong></div>
+  <div><span>Dohodnutá cena všetkých zákaziek</span><strong>{{ price_total|crm_money }}</strong></div>
+  <div><span>Potvrdené náklady z bločkov</span><strong>{{ total|crm_money }}</strong></div>
+</div>
+
+<section aria-labelledby="jobs-title">
+  <div class="cards-heading">
+    <h2 id="jobs-title">Zákazky <span class="count">{{ jobs|length }}</span></h2>
+  </div>
+  {% if jobs %}
+  <div class="job-cards">
+    {% for job in jobs %}
+    {% set plan = plans.get(job.id) %}
+    <a class="job-card" href="{{ url_for('crm.detail', job_id=job.id) }}" aria-label="Otvoriť zákazku {{ job.title }}">
+      <div class="job-card-top">
+        <span class="badge">{{ crm_statuses.get(job.status, job.status) }}</span>
+        <span class="job-card-arrow" aria-hidden="true">↗</span>
+      </div>
+      <h3>{{ job.title }}</h3>
+      <p class="job-card-client">{{ clients[job.client_id].name if job.client_id in clients else 'Bez zákazníka' }}</p>
+      <div class="job-card-facts">
+        <div><span>Termín</span><strong>{{ plan.due_date.strftime('%d. %m. %Y') if plan and plan.due_date else 'Nezadaný' }}</strong></div>
+        <div><span>Dohodnutá cena</span><strong>{{ plan.agreed_price_cents|crm_money if plan and plan.agreed_price_cents is not none else 'Nezadaná' }}</strong></div>
+        <div><span>Potvrdené náklady</span><strong>{{ totals.get(job.id, 0)|crm_money }}</strong></div>
+      </div>
+      <span class="job-card-open">Otvoriť detail <span aria-hidden="true">→</span></span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="panel empty">
+    <span class="empty-icon">＋</span>
+    <h3>Prvá zákazka začína tu.</h3>
+    <p>Pridajte zákazníka, založte zákazku a nahrajte prvý bloček.</p>
+    <a class="btn dark" href="{{ url_for('crm.clients') }}">Pridať prvého zákazníka</a>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

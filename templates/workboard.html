@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Dnes{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4"><div><h1 class="h2 mb-1">Dnes</h1><div class="text-muted">Čo čaká na tvoje rozhodnutie alebo prácu.</div></div><div class="d-flex gap-2"><a class="btn btn-outline-secondary" href="{{ url_for('pricebook.index') }}">Môj cenník</a><a class="btn btn-primary" href="{{ url_for('offers.new_lead') }}">+ Nový dopyt</a></div></div>
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header">Dopyty a ďalší krok · {{ leads|length }}</div><div class="card-body">
+    {% for lead in leads %}<a class="d-block border-bottom py-2 text-decoration-none" href="{{ url_for('offers.lead_detail', lead_id=lead.id) }}"><strong>{{ lead.customer_name or lead.name }}</strong><div class="small text-muted">{{ lead.next_action or 'Urči ďalší krok' }}{% if lead.next_action_due %} · do {{ lead.next_action_due.strftime('%d.%m.%Y') }}{% endif %}</div></a>{% else %}<div class="text-muted">Žiadne otvorené dopyty.</div>{% endfor %}
+  </div></div></div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header">Ponuky bez odpovede aspoň 7 dní · {{ stale|length }}</div><div class="card-body">
+    {% for offer, revision in stale %}<a class="d-block border-bottom py-2 text-decoration-none" href="{{ url_for('offers.edit_offer', offer_id=offer.id) }}"><strong>{{ offer.customer_name or offer.offer_number }}</strong><div class="small text-muted">{{ offer.offer_number }} · odoslané {{ revision.sent_at.strftime('%d.%m.%Y') }} · {{ revision.payload.total }} €</div></a>{% else %}<div class="text-muted">Žiadna stará ponuka čakajúca na odpoveď.</div>{% endfor %}
+  </div></div></div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header">Termíny do 7 dní · {{ activities|length }}</div><div class="card-body">
+    {% for activity in activities %}<a class="d-block border-bottom py-2 text-decoration-none" href="{% if activity.lead_id %}{{ url_for('offers.lead_detail', lead_id=activity.lead_id) }}{% else %}{{ url_for('jobs.job_detail', job_id=activity.job_id) }}{% endif %}"><strong>{{ activity.starts_at.strftime('%d.%m.%Y %H:%M') }}</strong> · {{ activity.kind }}<div class="small text-muted">{{ activity.notes or '' }}</div></a>{% else %}<div class="text-muted">Žiadny zapísaný termín.</div>{% endfor %}
+  </div></div></div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header">Treba kúpiť · {{ materials|length }}</div><div class="card-body">
+    {% for material in materials %}<a class="d-block border-bottom py-2 text-decoration-none" href="{{ url_for('jobs.job_detail', job_id=material.job_id) }}"><strong>{{ material.description }}</strong> · {{ material.quantity }} {{ material.unit }}<div class="small text-muted">{{ material.job.title }}</div></a>{% else %}<div class="text-muted">Žiadny materiál v stave „treba kúpiť“.</div>{% endfor %}
+  </div></div></div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header">Hotové a nefakturované · {{ billable|length }}</div><div class="card-body">
+    {% for job in billable %}<a class="d-block border-bottom py-2 text-decoration-none" href="{{ url_for('jobs.job_detail', job_id=job.id) }}"><strong>{{ job.title }}</strong><div class="small text-muted">Otvoriť zákazku a skontrolovať fakturačné údaje</div></a>{% else %}<div class="text-muted">Žiadna hotová zákazka bez faktúry.</div>{% endfor %}
+  </div></div></div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header">Faktúry po splatnosti · {{ overdue|length }}</div><div class="card-body">
+    {% for invoice in overdue %}<a class="d-block border-bottom py-2 text-decoration-none" href="{{ url_for('main.view_invoice', invoice_id=invoice.id) }}"><strong>{{ invoice.invoice_number }}</strong> · {{ invoice.client.name }}<div class="small text-muted">Splatnosť {{ invoice.due_date.strftime('%d.%m.%Y') }} · {{ '%.2f'|format(invoice.total_cost) }} € bez DPH</div></a>{% else %}<div class="text-muted">Žiadna faktúra po splatnosti.</div>{% endfor %}
+  </div></div></div>
+</div>
+<p class="small text-muted mt-3">Zoznamy zobrazujú najviac 20 položiek (materiál 30). Úhrady, ponuky a náklady sa neaktualizujú z externých kanálov automaticky. <a href="{{ url_for('main.dashboard') }}">Starý fakturačný prehľad</a></p>
+{% endblock %}

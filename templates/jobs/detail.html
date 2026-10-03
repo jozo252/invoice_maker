@@ -16,6 +16,9 @@
             </div>
 
             <div class="col-auto ms-auto d-print-none">
+                <a href="{{ url_for('crm.detail', job_id=job.id) }}" class="btn btn-primary">
+                    Bločky a náklady
+                </a>
                 <a href="{{ url_for('jobs.jobs_list') }}" class="btn btn-outline-secondary">
                     Späť na zákazky
                 </a>
@@ -45,6 +48,8 @@
                             <span class="badge bg-purple-lt">Cenová ponuka</span>
                         {% elif job.status == "approved" %}
                             <span class="badge bg-green-lt">Schválená</span>
+                        {% elif job.status == "in_progress" %}
+                            <span class="badge bg-blue-lt">Realizácia</span>
                         {% elif job.status == "done" %}
                             <span class="badge bg-teal-lt">Hotová</span>
                         {% elif job.status == "invoiced" %}
@@ -100,6 +105,9 @@
                                 </div>
                             {% endif %}
                         </div>
+                        {% if job.site %}<div class="mb-3"><span class="text-muted small">Miesto realizácie</span><div>{{ job.site.street or '' }}, {{ job.site.zip_code or '' }} {{ job.site.city or '' }}, {{ job.site.country or '' }}</div></div>{% endif %}
+                        {% if job.offer_revision %}<div class="mb-3">Prijatá ponuka: <strong>{{ job.offer_revision.payload.offer_number }}</strong> · {{ job.offer_revision.payload.total }} €</div>{% endif %}
+                        {% if job_invoice %}<a class="btn btn-outline-success mb-3" href="{{ url_for('main.view_invoice', invoice_id=job_invoice.id) }}">Faktúra {{ job_invoice.invoice_number }}</a>{% elif job.status == 'done' and job.offer_revision %}<a class="btn btn-success mb-3" href="{{ url_for('jobs.job_invoice', job_id=job.id) }}">Pripraviť faktúru</a>{% endif %}
 
                         <form method="POST" action="{{ url_for('jobs.job_update_status', job_id=job.id) }}">
                             {% if csrf_token %}
@@ -114,6 +122,7 @@
                                         <option value="inspection" {% if job.status == "inspection" %}selected{% endif %}>Obhliadka</option>
                                         <option value="offer_sent" {% if job.status == "offer_sent" %}selected{% endif %}>Cenová ponuka</option>
                                         <option value="approved" {% if job.status == "approved" %}selected{% endif %}>Schválená</option>
+                                        <option value="in_progress" {% if job.status == "in_progress" %}selected{% endif %}>Realizácia</option>
                                         <option value="done" {% if job.status == "done" %}selected{% endif %}>Hotová</option>
                                         <option value="invoiced" {% if job.status == "invoiced" %}selected{% endif %}>Fakturovaná</option>
                                         <option value="cancelled" {% if job.status == "cancelled" %}selected{% endif %}>Zrušená</option>
@@ -247,6 +256,63 @@
             <!-- PRAVÝ STĹPEC -->
             <div class="col-lg-4">
 
+                <div class="card mb-3"><div class="card-header"><h3 class="card-title mb-0">Termíny</h3></div><div class="card-body">
+                    <form method="POST" action="{{ url_for('jobs.job_add_activity', job_id=job.id) }}" class="mb-3"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><select name="kind" class="form-select mb-2"><option value="work">Práca</option><option value="service">Servis</option></select><input name="starts_at" type="datetime-local" class="form-control mb-2" required><input name="notes" class="form-control mb-2" placeholder="Čo treba spraviť" required><button class="btn btn-outline-primary" type="submit">Pridať termín</button></form>
+                    {% for activity in activities %}<div class="border-top py-2"><strong>{{ activity.starts_at.strftime('%d.%m.%Y %H:%M') }}</strong> · {{ activity.status }}<div>{{ activity.notes }}</div>{% if activity.status == 'planned' %}<form method="POST" action="{{ url_for('jobs.job_finish_activity', job_id=job.id, activity_id=activity.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-success mt-1">Hotovo</button></form>{% endif %}</div>{% else %}<div class="text-muted">Žiadne termíny.</div>{% endfor %}
+                </div></div>
+
+                <div class="card mb-3"><div class="card-header"><h3 class="card-title mb-0">Materiál zákazky</h3></div><div class="card-body">
+                    <form method="POST" action="{{ url_for('jobs.job_add_material', job_id=job.id) }}" class="mb-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input name="description" class="form-control mb-2" placeholder="Napr. CYKY 3×2,5" maxlength="200" required>
+                        <div class="d-flex gap-2"><input name="quantity" type="number" step="0.001" min="0.001" class="form-control" placeholder="Množstvo" required><input name="unit" class="form-control" value="ks" maxlength="20" required><button class="btn btn-outline-primary" type="submit">Pridať</button></div>
+                    </form>
+                    {% for material in materials %}<div class="border-top py-2"><strong>{{ material.description }}</strong><div class="small text-muted">{{ material.quantity }} {{ material.unit }}</div>
+                        <form method="POST" action="{{ url_for('jobs.job_material_status', job_id=job.id, material_id=material.id) }}" class="d-flex gap-2 mt-1"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><select name="status" class="form-select form-select-sm">
+                            {% for value, label in [('needed','Treba kúpiť'),('ordered','Objednané'),('ready','Pripravené'),('used','Použité'),('returned','Vrátené')] %}<option value="{{ value }}" {% if material.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                        </select><button class="btn btn-sm btn-outline-secondary" type="submit">Uložiť</button></form></div>{% else %}<div class="text-muted">Zatiaľ žiadny materiál.</div>{% endfor %}
+                </div></div>
+
+                <div class="card mb-3"><div class="card-header"><h3 class="card-title mb-0">Priame náklady</h3></div><div class="card-body">
+                    <p class="small text-muted">Bločky patria do „Bločky a náklady“. Tu zadaj vlastnú prácu, dopravu alebo subdodávku. Ten istý nákup nezapisuj dvakrát.</p>
+                    <form method="POST" action="{{ url_for('jobs.job_add_cost', job_id=job.id) }}" class="mb-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="category" value="labor">
+                        <div class="fw-semibold mb-1">Vlastná práca</div><input name="description" class="form-control mb-2" placeholder="Práca na stavbe" maxlength="200" required>
+                        <div class="d-flex gap-2 mb-2"><input name="minutes" type="number" min="1" class="form-control" placeholder="Minúty" required><input name="hourly_cost" type="number" min="0" step="0.01" class="form-control" placeholder="Interný €/h" required></div>
+                        <input name="occurred_on" type="date" class="form-control mb-2" value="{{ today.isoformat() }}" required><button type="submit" class="btn btn-outline-primary">Pridať prácu</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('jobs.job_add_cost', job_id=job.id) }}" class="border-top pt-3 mb-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="fw-semibold mb-1">Ďalší náklad</div>
+                        <select name="category" class="form-select mb-2"><option value="travel">Doprava</option><option value="subcontract">Subdodávka</option><option value="other">Iné</option></select>
+                        <input name="description" class="form-control mb-2" placeholder="Popis nákladu" maxlength="200" required>
+                        <input name="amount" type="number" step="0.01" min="0.01" class="form-control mb-2" placeholder="Suma €" required>
+                        <input name="occurred_on" type="date" class="form-control mb-2" value="{{ today.isoformat() }}" required><button type="submit" class="btn btn-outline-primary">Pridať náklad</button>
+                    </form>
+                    {% for cost in costs %}<div class="border-top py-2"><div class="d-flex justify-content-between"><strong>{{ cost.description }}</strong><span>{{ cost.amount_cents|crm_money }}</span></div><div class="small text-muted">{{ cost.category }} · {{ cost.occurred_on.strftime('%d.%m.%Y') }}{% if cost.minutes %} · {{ cost.minutes }} min pri {{ cost.hourly_cost_cents|crm_money }}/h{% endif %}</div><form method="POST" action="{{ url_for('jobs.job_delete_cost', job_id=job.id, cost_id=cost.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger mt-1" type="submit">Odstrániť chybný záznam</button></form></div>{% endfor %}
+                </div></div>
+
+                <div class="card mb-3"><div class="card-header"><h3 class="card-title mb-0">Zmeny rozsahu</h3></div><div class="card-body">
+                    {% if not job_invoice %}<form method="POST" action="{{ url_for('jobs.job_propose_change', job_id=job.id) }}" class="mb-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input name="description" class="form-control mb-2" placeholder="Napr. ďalšia zásuvka za TV" maxlength="200" required>
+                        <div class="d-flex gap-2 mb-2"><input name="quantity" type="number" min="0.001" step="0.001" class="form-control" value="1" required><input name="unit" class="form-control" value="ks" maxlength="20" required><input name="unit_price" type="number" min="0" step="0.01" class="form-control" placeholder="€/jednotka" required></div>
+                        <button type="submit" class="btn btn-outline-primary">Pripraviť dodatok</button>
+                    </form>{% endif %}
+                    {% for change in changes %}<div class="border-top py-2"><strong>{{ change.description }}</strong><div class="small">{{ change.quantity }} {{ change.unit }} × {{ change.unit_price_cents|crm_money }} = {{ change.total_cents|crm_money }}</div><div class="small text-muted">{{ 'Odsúhlasené: ' + change.approval_note if change.status == 'approved' else 'Čaká na súhlas zákazníka; nezahrnie sa do faktúry.' }}</div>
+                        {% if change.status == 'proposed' and not job_invoice %}<form method="POST" action="{{ url_for('jobs.job_approve_change', job_id=job.id, change_id=change.id) }}" class="mt-2"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input name="approval_note" class="form-control mb-2" placeholder="Súhlas e-mailom 3.10.2026" required><button class="btn btn-sm btn-outline-success" type="submit">Potvrdiť súhlas</button></form>{% endif %}
+                    </div>{% else %}<div class="text-muted">Žiadne dodatky.</div>{% endfor %}
+                </div></div>
+
+                <div class="card mb-3"><div class="card-header"><h3 class="card-title mb-0">Ekonomika zákazky</h3></div><div class="card-body">
+                    <div class="d-flex justify-content-between"><span>Pôvodná cena</span><span>{{ finances.base_cents|crm_money if finances.base_cents is not none else 'nezadaná' }}</span></div>
+                    <div class="d-flex justify-content-between"><span>Odsúhlasené dodatky</span><span>{{ finances.extras_cents|crm_money }}</span></div>
+                    <div class="d-flex justify-content-between"><span>Dohodnutá cena spolu</span><strong>{{ finances.agreed_cents|crm_money if finances.agreed_cents is not none else 'nezadaná' }}</strong></div>
+                    <div class="d-flex justify-content-between"><span>Odhad priamych nákladov</span><span>{{ finances.planned_cost_cents|crm_money if finances.planned_cost_cents is not none else 'neúplný' }}</span></div>
+                    <div class="d-flex justify-content-between"><span>Potvrdené bločky</span><span>{{ finances.receipt_cents|crm_money }}</span></div>
+                    <div class="d-flex justify-content-between"><span>Práca a ďalšie náklady</span><span>{{ finances.manual_cents|crm_money }}</span></div>
+                    <hr><div class="d-flex justify-content-between"><span>Orientačný priamy príspevok</span><strong>{{ finances.contribution_cents|crm_money if finances.contribution_cents is not none else '—' }}</strong></div>
+                    {% if finances.missing %}<div class="alert alert-warning mt-3 mb-0 small">Neúplné údaje: {{ finances.missing|join(', ') }}. Toto ešte nie je čistý zisk.</div>{% else %}<div class="small text-muted mt-2">Bez režijných nákladov a daní; nejde o čistý zisk.</div>{% endif %}
+                </div></div>
+
                 <!-- RÝCHLY PREHĽAD -->
                 <div class="card mb-3">
                     <div class="card-header">
@@ -298,6 +364,9 @@
                                     Povolené: JPG, PNG, WEBP, PDF.
                                 </small>
                             </div>
+                            <div class="row g-2 mb-3"><div class="col-md-6"><label class="form-label">Miestnosť</label><input name="room_label" class="form-control" placeholder="Obývačka"></div><div class="col-md-6"><label class="form-label">Prvok</label><input name="element_label" class="form-control" placeholder="Zásuvka za TV"></div></div>
+                            <div class="mb-3"><label class="form-label">Typ kábla</label><input name="cable_type" class="form-control" placeholder="CYKY 3×2,5"></div>
+                            <div><label class="form-label">Trasa, rozmer alebo poznámka</label><textarea name="route_note" class="form-control" rows="2" placeholder="Trasa 20 cm pod stropom, pred zakrytím"></textarea></div>
 
                         </div>
 
@@ -313,19 +382,18 @@
                 <div class="card mb-3">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h3 class="card-title mb-0">Prílohy</h3>
-                        <span class="text-muted small">
-                            {{ job.attachments|length }} súborov
-                        </span>
+                        <span class="text-muted small">{{ attachments|length }} súborov</span>
                     </div>
 
                     <div class="card-body">
-                        {% for attachment in job.attachments|sort(attribute='created_at', reverse=True) %}
+                        <form method="GET" action="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="d-flex gap-2 mb-3"><input name="q" value="{{ photo_query }}" class="form-control" placeholder="Hľadať miestnosť, prvok alebo kábel"><button class="btn btn-outline-primary">Hľadať</button></form>
+                        {% for attachment in attachments %}
                             <div class="border rounded p-3 mb-3">
 
                                 {% if attachment.file_type in ["jpg", "jpeg", "png", "webp"] %}
-                                    <a href="{{ url_for('static', filename=attachment.file_path) }}" target="_blank">
+                                    <a href="{{ url_for('jobs.job_attachment', job_id=job.id, attachment_id=attachment.id) }}" target="_blank">
                                         <img
-                                            src="{{ url_for('static', filename=attachment.file_path) }}"
+                                            src="{{ url_for('jobs.job_attachment', job_id=job.id, attachment_id=attachment.id) }}"
                                             class="img-fluid rounded mb-2"
                                             alt="{{ attachment.original_filename }}"
                                         >
@@ -333,17 +401,21 @@
                                 {% endif %}
 
                                 <div class="fw-semibold text-truncate">
-                                    <a href="{{ url_for('static', filename=attachment.file_path) }}" target="_blank">
+                                    <a href="{{ url_for('jobs.job_attachment', job_id=job.id, attachment_id=attachment.id) }}" target="_blank">
                                         {{ attachment.original_filename }}
                                     </a>
                                 </div>
+
+                                {% if attachment.room_label or attachment.element_label %}<div class="small">{{ attachment.room_label or '' }}{% if attachment.room_label and attachment.element_label %} → {% endif %}{{ attachment.element_label or '' }}</div>{% endif %}
+                                {% if attachment.cable_type %}<div class="small">Kábel: {{ attachment.cable_type }}</div>{% endif %}
+                                {% if attachment.route_note %}<div class="small text-muted">{{ attachment.route_note }}</div>{% endif %}
 
                                 <div class="text-muted small mb-2">
                                     {{ attachment.created_at.strftime("%d.%m.%Y %H:%M") if attachment.created_at else "-" }}
                                 </div>
 
                                 <div class="d-flex gap-2">
-                                    <a href="{{ url_for('static', filename=attachment.file_path) }}"
+                                    <a href="{{ url_for('jobs.job_attachment', job_id=job.id, attachment_id=attachment.id) }}"
                                        target="_blank"
                                        class="btn btn-sm btn-outline-primary">
                                         Otvoriť

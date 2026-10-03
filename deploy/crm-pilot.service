@@ -1,0 +1,35 @@
+[Unit]
+Description=InvoiceMaker CRM pilot for craftspeople
+After=network.target
+
+[Service]
+Type=simple
+User=crm-pilot
+Group=crm-pilot
+WorkingDirectory=/srv/crm-pilot/current
+Environment=CRM_INSTANCE_DIR=/srv/crm-pilot/shared
+Environment=CRM_PUBLIC_ORIGIN=https://invoicemakerai.com
+Environment=CRM_URL_PREFIX=/remeselnici
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/srv/crm-pilot/venv/bin/gunicorn --workers 1 --threads 4 --bind 127.0.0.1:8098 --timeout 60 --access-logfile - --error-logfile - --no-control-socket crm_pilot:create_pilot_app()
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateDevices=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+TasksMax=64
+MemoryMax=512M
+LimitNOFILE=4096
+ReadWritePaths=/srv/crm-pilot/shared
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

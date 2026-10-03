@@ -15,10 +15,12 @@ from flask import (
     current_app,
 )
 from flask_login import login_required, current_user
+from sqlalchemy.exc import IntegrityError
 from flask_mail import Message
 from ai import call_llm_extract_offer, call_llm_generate_offer_description
 from app import db
-from models import Job, Lead, Offer, Invoice,Company,Client
+from models import Job, Lead, Offer, OfferRevision, Invoice, Company, Client, Site, WorkActivity, PriceEntry
+from workflows import WorkflowError, accept_offer, link_lead_client, record_offer_sent
 import json
 from pydantic import ValidationError
 from pydantic_models import OfferAI, OfferAIItem, InvoiceModel
@@ -131,25 +133,37 @@ def normalize_items_from_form():
     item_names = request.form.getlist("item_description[]")
     item_quantities = request.form.getlist("item_quantity[]")
     item_unit_prices = request.form.getlist("item_price_per_item[]")
+    item_units = request.form.getlist("item_unit[]")
 
+    if not item_units:
+        item_units = ["ks"] * len(item_names)  # legacy forms without unit field
+    if not (len(item_names) == len(item_quantities) == len(item_unit_prices) == len(item_units)):
+        raise WorkflowError("Položky ponuky majú neúplné údaje.")
     items = []
 
-    for name, qty, price in zip(item_names, item_quantities, item_unit_prices):
+    for name, qty, price, unit in zip(item_names, item_quantities, item_unit_prices, item_units):
         name = (name or "").strip()
         if not name:
             continue
 
-        qty_dec = to_decimal(qty, "1.00")
-        price_dec = to_decimal(price, "0.00")
-
-        if qty_dec < 0:
-            qty_dec = Decimal("0.00")
-        if price_dec < 0:
-            price_dec = Decimal("0.00")
+        try:
+            qty_dec = Decimal(str(qty).replace(",", "."))
+            price_dec = Decimal(str(price).replace(",", "."))
+        except (InvalidOperation, TypeError, ValueError):
+            raise WorkflowError("Skontroluj množstvo a cenu každej položky.") from None
+        if (not qty_dec.is_finite() or not price_dec.is_finite() or
+                qty_dec <= 0 or qty_dec > 100000 or price_dec < 0 or price_dec > 10000000):
+            raise WorkflowError("Položka musí mať kladné množstvo a nezápornú cenu.")
+        if qty_dec * 1000 != (qty_dec * 1000).to_integral_value() or price_dec != money(price_dec):
+            raise WorkflowError("Množstvo môže mať najviac 3 a cena najviac 2 desatinné miesta.")
+        unit = (unit or "ks").strip()
+        if not unit or len(unit) > 20:
+            raise WorkflowError("Jednotka položky musí mať najviac 20 znakov.")
 
         items.append({
             "description": name,
             "quantity": float(qty_dec),
+            "unit": unit,
             "price_per_item": float(price_dec),
         })
     #print(f"items from func {items}")
@@ -167,14 +181,17 @@ def generate_offer_from_text(user_text: str, company_id: int, user_id: int) -> d
             "raw": ai_raw,
         }
 
-    normalized_items, subtotal = normalize_offer_items(
+    normalized_items, _ = normalize_offer_items(
         [item.model_dump() for item in ai_obj.items]
     )
-
-    discount_total = Decimal(str(ai_obj.discount_total)) if ai_obj.discount_total is not None else Decimal("0.00")
-    
-    total = subtotal - discount_total
-    total = money(total)
+    # Extraction can suggest scope and quantities. A model's guessed prices
+    # must never become a sendable commercial offer without human entry.
+    for item in normalized_items:
+        item["price_per_item"] = 0.0
+        item["total_cost"] = 0.0
+    subtotal = Decimal("0.00")
+    discount_total = Decimal("0.00")
+    total = Decimal("0.00")
 
     db_ready = {
         "offer_number": generate_offer_number(user_id, company_id),
@@ -189,7 +206,7 @@ def generate_offer_from_text(user_text: str, company_id: int, user_id: int) -> d
         "discount_total": discount_total,
         "total": total,
         "status": "draft",
-        "warnings": ai_obj.warnings,
+        "warnings": list(ai_obj.warnings or []) + ["AI pripravila rozsah; ceny a zľavu musíš zadať a potvrdiť ty."],
         "missing_fields": ai_obj.missing_fields,
     }
 
@@ -321,17 +338,56 @@ def new_lead():
     return render_template("new_lead.html")
 
 
+@offers.route("/leads")
+@login_required
+def leads_list():
+    leads = Lead.query.filter_by(user_id=current_user.id).order_by(Lead.created_at.desc()).all()
+    return render_template("leads_list.html", leads=leads)
+
+
+@offers.route("/leads/<int:lead_id>")
+@login_required
+def lead_detail(lead_id):
+    lead = Lead.query.filter_by(id=lead_id, user_id=current_user.id).first_or_404()
+    clients = Client.query.filter_by(user_id=current_user.id).order_by(Client.name).all()
+    offers_for_lead = Offer.query.filter_by(lead_id=lead.id, user_id=current_user.id).order_by(Offer.created_at.desc()).all()
+    return render_template("lead_detail.html", lead=lead, clients=clients, offers=offers_for_lead)
+
+
 @offers.route("/leads/create", methods=["POST"])
 @login_required
 def create_lead():
     name = (request.form.get("name") or "").strip()
     customer_name = (request.form.get("customer_name") or "").strip()
     customer_email = (request.form.get("customer_email") or "").strip()
+    customer_phone = (request.form.get("customer_phone") or "").strip()
     description = (request.form.get("description") or "").strip()
+    source = (request.form.get("source") or "manual").strip()
+    work_type = (request.form.get("work_type") or "other").strip()
+    next_action = (request.form.get("next_action") or "Odpovedať zákazníkovi").strip()
+    due_raw = (request.form.get("next_action_due") or "").strip()
+
+    if not customer_name or not (customer_email or customer_phone):
+        flash("Zadaj meno a aspoň telefón alebo email.", "danger")
+        return render_template("new_lead.html"), 400
+    if len(customer_phone) > 32 or len(customer_email) > 255 or len(next_action) > 255:
+        flash("Kontaktné údaje sú príliš dlhé.", "danger")
+        return render_template("new_lead.html"), 400
+    if source not in {"manual", "phone", "sms", "whatsapp", "messenger", "instagram", "email", "web", "recommendation", "google", "partner"}:
+        flash("Neplatný zdroj dopytu.", "danger")
+        return render_template("new_lead.html"), 400
+    if work_type not in {"service", "renovation", "new_build", "board", "ev", "pv", "other"}:
+        flash("Neplatný typ práce.", "danger")
+        return render_template("new_lead.html"), 400
+    try:
+        next_action_due = date.fromisoformat(due_raw) if due_raw else None
+    except ValueError:
+        flash("Neplatný dátum ďalšieho kroku.", "danger")
+        return render_template("new_lead.html"), 400
 
     if not description:
         flash("Popis dopytu je povinný.", "danger")
-        return render_template("new_lead.html")
+        return render_template("new_lead.html"), 400
 
     lead = Lead(
         user_id=current_user.id,
@@ -339,14 +395,94 @@ def create_lead():
         description=description,
         customer_name=customer_name or None,
         customer_email=customer_email or None,
+        customer_phone=customer_phone or None,
+        source=source,
+        work_type=work_type,
+        next_action=next_action or None,
+        next_action_due=next_action_due,
         status="new",
         created_at=datetime.utcnow(),
     )
 
     db.session.add(lead)
+    site_city = (request.form.get("site_city") or "").strip()
+    site_street = (request.form.get("site_street") or "").strip()
+    site_zip = (request.form.get("site_zip_code") or "").strip()
+    site_country = (request.form.get("site_country") or "SK").strip().upper()
+    if site_country not in {"SK", "CZ", "AT", "DE"}:
+        db.session.rollback()
+        flash("Neplatná krajina realizácie.", "danger")
+        return render_template("new_lead.html"), 400
+    if any((site_city, site_street, site_zip)):
+        if len(site_city) > 100 or len(site_street) > 200 or len(site_zip) > 20:
+            db.session.rollback()
+            flash("Adresa miesta je príliš dlhá.", "danger")
+            return render_template("new_lead.html"), 400
+        site = Site(user_id=current_user.id, city=site_city or None, street=site_street or None,
+                    zip_code=site_zip or None, country=site_country)
+        db.session.add(site)
+        db.session.flush()
+        lead.site_id = site.id
     db.session.commit()
 
-    return redirect(url_for("offers.generate_offer_from_lead", lead_id=lead.id))
+    return redirect(url_for("offers.lead_detail", lead_id=lead.id))
+
+
+@offers.route("/leads/<int:lead_id>/client", methods=["POST"])
+@login_required
+def link_client_to_lead(lead_id):
+    lead = Lead.query.filter_by(id=lead_id, user_id=current_user.id).first_or_404()
+    selected = request.form.get("client_id", type=int)
+    try:
+        link_lead_client(lead, current_user.id, client_id=selected,
+                         create_new=request.form.get("create_client") == "yes")
+        db.session.commit()
+        flash("Klient je priradený k dopytu.", "success")
+    except (WorkflowError, IntegrityError) as error:
+        db.session.rollback()
+        flash(str(error) if isinstance(error, WorkflowError) else "Klienta sa nepodarilo uložiť.", "danger")
+    return redirect(url_for("offers.lead_detail", lead_id=lead.id))
+
+
+@offers.route("/leads/<int:lead_id>/visits", methods=["POST"])
+@login_required
+def add_lead_visit(lead_id):
+    lead = Lead.query.filter_by(id=lead_id, user_id=current_user.id).first_or_404()
+    starts_raw = (request.form.get("starts_at") or "").strip()
+    notes = (request.form.get("notes") or "").strip()
+    visit_status = (request.form.get("visit_status") or "done").strip()
+    try:
+        starts_at = datetime.fromisoformat(starts_raw)
+    except ValueError:
+        flash("Zadaj platný termín obhliadky.", "danger")
+        return redirect(url_for("offers.lead_detail", lead_id=lead.id))
+    if not notes or len(notes) > 3000:
+        flash("Zapíš krátku poznámku z obhliadky (max. 3000 znakov).", "danger")
+        return redirect(url_for("offers.lead_detail", lead_id=lead.id))
+    if visit_status not in {"planned", "done"} or starts_at.tzinfo is not None:
+        flash("Neplatný stav alebo čas obhliadky.", "danger")
+        return redirect(url_for("offers.lead_detail", lead_id=lead.id))
+    db.session.add(WorkActivity(user_id=current_user.id, lead_id=lead.id,
+                                kind="visit", starts_at=starts_at, notes=notes,
+                                status=visit_status))
+    lead.status = "visited" if visit_status == "done" else "inspection"
+    lead.next_action = "Pripraviť cenovú ponuku" if visit_status == "done" else "Obhliadka"
+    db.session.commit()
+    flash("Obhliadka je uložená pri dopyte.", "success")
+    return redirect(url_for("offers.lead_detail", lead_id=lead.id))
+
+
+@offers.route("/leads/<int:lead_id>/visits/<int:activity_id>/done", methods=["POST"])
+@login_required
+def finish_lead_visit(lead_id, activity_id):
+    lead = Lead.query.filter_by(id=lead_id, user_id=current_user.id).first_or_404()
+    activity = WorkActivity.query.filter_by(id=activity_id, lead_id=lead.id,
+                                             user_id=current_user.id, kind="visit").first_or_404()
+    activity.status = "done"
+    lead.status = "visited"
+    lead.next_action = "Pripraviť cenovú ponuku"
+    db.session.commit()
+    return redirect(url_for("offers.lead_detail", lead_id=lead.id))
 
 @offers.route("/generate-from-text", methods=["POST"])
 @login_required
@@ -358,7 +494,7 @@ def generate_offer_from_text_route():
         flash("Vlož text pre AI.", "warning")
         return redirect(url_for("offers.new_offer"))
 
-    if not company_id:
+    if not company_id or not Company.query.filter_by(id=company_id, user_id=current_user.id).first():
         flash("Vyber firmu.", "warning")
         return redirect(url_for("offers.new_offer"))
 
@@ -444,6 +580,8 @@ def generate_offer_from_lead(lead_id):
         offer_number=offer_number,
         user_id=current_user.id,
         lead_id=lead.id,
+        client_id=lead.client_id,
+        site_id=lead.site_id,
         customer_name=customer_name or None,
         customer_email=customer_email or None,
         company_id=company.id,
@@ -736,26 +874,50 @@ def confirm_ai_offer():
 @login_required
 def edit_offer(offer_id):
     offer = Offer.query.filter_by(id=offer_id, user_id=current_user.id).first_or_404()
-    return render_template("offer_edit.html", offer=offer)
+    clients = Client.query.filter_by(user_id=current_user.id).order_by(Client.name).all()
+    latest_revision = (OfferRevision.query.filter_by(offer_id=offer.id, user_id=current_user.id)
+                       .order_by(OfferRevision.version.desc()).first())
+    return render_template("offer_edit.html", offer=offer, clients=clients,
+                           latest_revision=latest_revision)
 
 
 @offers.route("/<int:offer_id>/update", methods=["POST"])
 @login_required
 def update_offer(offer_id):
     offer = Offer.query.filter_by(id=offer_id, user_id=current_user.id).first_or_404()
+    if offer.status == "accepted":
+        flash("Prijatá ponuka je uzamknutá. Zmenu rozsahu zaznamenaj ako novú dohodu.", "danger")
+        return redirect(url_for("offers.edit_offer", offer_id=offer.id))
 
     customer_name = (request.form.get("customer_name") or "").strip()
     customer_email = (request.form.get("customer_email") or "").strip()
     notes = (request.form.get("notes") or "").strip()
-    discount_total = to_decimal(request.form.get("discount_total"), "0.00")
-
-    items = normalize_items_from_form()
+    try:
+        discount_total = Decimal(str(request.form.get("discount_total") or "0").replace(",", "."))
+        items = normalize_items_from_form()
+    except (InvalidOperation, WorkflowError) as error:
+        flash(str(error) if isinstance(error, WorkflowError) else "Skontroluj zľavu.", "danger")
+        return redirect(url_for("offers.edit_offer", offer_id=offer.id))
 
     if not items:
         flash("Ponuka musí obsahovať aspoň jednu položku.", "danger")
-        return render_template("offer_edit.html", offer=offer)
+        return redirect(url_for("offers.edit_offer", offer_id=offer.id))
 
+    for new_item, old_item in zip(items, offer.items or []):
+        if (new_item["description"] == old_item.get("description")
+                and new_item["unit"] == (old_item.get("unit") or "ks")
+                and Decimal(str(new_item["price_per_item"])) == Decimal(str(old_item.get("price_per_item", 0)))):
+            for field in ("catalog_id", "unit_cost_cents", "price_origin", "price_source_note"):
+                if field in old_item:
+                    new_item[field] = old_item[field]
+
+    if not discount_total.is_finite() or discount_total < 0 or discount_total != money(discount_total):
+        flash("Zľava musí byť medzi nulou a medzisúčtom.", "danger")
+        return redirect(url_for("offers.edit_offer", offer_id=offer.id))
     subtotal, total = calculate_totals(items, discount_total)
+    if discount_total > subtotal:
+        flash("Zľava musí byť medzi nulou a medzisúčtom.", "danger")
+        return redirect(url_for("offers.edit_offer", offer_id=offer.id))
 
     offer.customer_name = customer_name or None
     offer.customer_email = customer_email or None
@@ -764,6 +926,8 @@ def update_offer(offer_id):
     offer.discount_total = discount_total
     offer.subtotal = subtotal
     offer.total = total
+    if offer.status == "sent":
+        offer.status = "draft"
     
     db.session.commit()
 
@@ -825,7 +989,7 @@ def download_offer(offer_id):
 def save_offer_from_preview():
     company_id = request.form.get("company_id", type=int)
 
-    if not company_id:
+    if not company_id or not Company.query.filter_by(id=company_id, user_id=current_user.id).first():
         flash("Chýba firma.", "danger")
         return redirect(url_for("offers.list_offers"))
 
@@ -907,13 +1071,21 @@ def send_offer_email_route(offer_id):
     offer = Offer.query.filter_by(id=offer_id, user_id=current_user.id).first_or_404()
 
     try:
+        # Prepare and validate exact rows first. Roll back the revision if mail
+        # delivery fails, then commit only after the provider returns.
+        record_offer_sent(offer, current_user.id, "email", "Odoslané z aplikácie",
+                          prices_confirmed=request.form.get("prices_confirmed") == "yes")
+        db.session.flush()
         send_offer_email(offer)
-        offer.status = "sent"
         db.session.commit()
-        flash("Ponuka byla odeslána emailem.", "success")
-    except Exception as e:
-        print("Error sending email:", e)
-        flash(f"Chyba při odesílání emailu.", "danger")
+        flash("Ponuka bola odoslaná e-mailom.", "success")
+    except WorkflowError as error:
+        db.session.rollback()
+        flash(str(error), "danger")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Offer email delivery failed")
+        flash("Odoslanie alebo zápis verzie zlyhal. Pred opakovaním skontroluj odoslanú poštu.", "danger")
 
     return redirect(url_for("offers.edit_offer", offer_id=offer.id))
 
@@ -921,9 +1093,41 @@ def send_offer_email_route(offer_id):
 @login_required
 def mark_offer_accepted(offer_id):
     offer = Offer.query.filter_by(id=offer_id, user_id=current_user.id).first_or_404()
-    offer.status = "accepted"
-    db.session.commit()
-    flash(f"Ponuka {offer.id} bola označená ako prijatá.", "success")
+    try:
+        job = accept_offer(offer, current_user.id,
+                           acceptance_note=request.form.get("acceptance_note"),
+                           client_id=request.form.get("client_id", type=int),
+                           create_client=request.form.get("create_client") == "yes")
+        db.session.commit()
+    except WorkflowError as error:
+        db.session.rollback()
+        flash(str(error), "danger")
+        return redirect(url_for("offers.edit_offer", offer_id=offer.id))
+    except IntegrityError:
+        db.session.rollback()
+        latest = (OfferRevision.query.filter_by(offer_id=offer.id, user_id=current_user.id)
+                  .order_by(OfferRevision.version.desc()).first())
+        job = Job.query.filter_by(offer_revision_id=latest.id, user_id=current_user.id).first() if latest else None
+        if job is None:
+            current_app.logger.exception("Offer acceptance failed")
+            flash("Prijatie ponuky sa nepodarilo uložiť.", "danger")
+            return redirect(url_for("offers.edit_offer", offer_id=offer.id))
+    flash("Ponuka je prijatá a zákazka pripravená.", "success")
+    return redirect(url_for("jobs.job_detail", job_id=job.id))
+
+
+@offers.route("/<int:offer_id>/mark-sent", methods=["POST"])
+@login_required
+def mark_offer_sent(offer_id):
+    offer = Offer.query.filter_by(id=offer_id, user_id=current_user.id).first_or_404()
+    try:
+        record_offer_sent(offer, current_user.id, "manual", request.form.get("delivery_note"),
+                          prices_confirmed=request.form.get("prices_confirmed") == "yes")
+        db.session.commit()
+        flash("Odoslaná verzia ponuky je uložená.", "success")
+    except (WorkflowError, IntegrityError) as error:
+        db.session.rollback()
+        flash(str(error) if isinstance(error, WorkflowError) else "Verziu ponuky sa nepodarilo uložiť.", "danger")
     return redirect(url_for("offers.edit_offer", offer_id=offer.id))
 
 
@@ -946,7 +1150,15 @@ def ai_expand_notes():
         return {"ok": False, "error": str(e)}, 500
     
 
-def save_offer_from_form(job=None):
+def save_offer_from_form(job=None, lead=None):
+    def back_with_error(message):
+        flash(message, "danger")
+        if lead:
+            return redirect(url_for("offers.create_offer_from_lead", lead_id=lead.id))
+        if job:
+            return redirect(url_for("offers.create_offer_from_job", job_id=job.id))
+        return redirect(url_for("offers.offer_create"))
+
     company_id = request.form.get("company_id") or None
     customer_name = request.form.get("customer_name", "").strip()
     customer_email = request.form.get("customer_email", "").strip()
@@ -957,11 +1169,17 @@ def save_offer_from_form(job=None):
     item_qtys = request.form.getlist("item_qty[]")
     item_units = request.form.getlist("item_unit[]")
     item_prices = request.form.getlist("item_price[]")
+    item_catalog_ids = request.form.getlist("item_catalog_id[]")
+    if not item_catalog_ids:
+        item_catalog_ids = [""] * len(item_names)
+    if not (len(item_names) == len(item_qtys) == len(item_units) == len(item_prices) == len(item_catalog_ids)):
+        return back_with_error("Položky ponuky majú neúplné údaje.")
 
     items = []
     subtotal = Decimal("0.00")
 
-    for name, qty_raw, unit, price_raw in zip(item_names, item_qtys, item_units, item_prices):
+    for name, qty_raw, unit, price_raw, catalog_raw in zip(
+            item_names, item_qtys, item_units, item_prices, item_catalog_ids):
         name = name.strip()
         unit = unit.strip() or "ks"
 
@@ -969,43 +1187,50 @@ def save_offer_from_form(job=None):
             continue
 
         try:
-            qty = Decimal(qty_raw.replace(",", "."))
-        except Exception:
-            qty = Decimal("1")
-
-        try:
-            price = Decimal(price_raw.replace(",", "."))
-        except Exception:
-            price = Decimal("0")
-
-        line_total = qty * price
+            qty = Decimal(str(qty_raw).replace(",", "."))
+            price = Decimal(str(price_raw).replace(",", "."))
+        except (InvalidOperation, TypeError, ValueError):
+            return back_with_error("Skontroluj množstvo a jednotkovú cenu každej položky.")
+        if not qty.is_finite() or not price.is_finite() or qty <= 0 or qty > 100000 or price < 0 or price > 10000000:
+            return back_with_error("Množstvo musí byť kladné a cena nezáporná.")
+        if qty * 1000 != (qty * 1000).to_integral_value() or price != money(price):
+            return back_with_error("Množstvo môže mať najviac 3 a cena najviac 2 desatinné miesta.")
+        line_total = money(qty * price)
         subtotal += line_total
 
-        items.append({
+        row = {
             "description": name,
             "quantity": float(qty),
             "unit": unit,
             "price_per_item": float(price),
             "total": float(line_total),
-        })
+        }
+        if catalog_raw:
+            try:
+                catalog_id = int(catalog_raw)
+            except (TypeError, ValueError):
+                return back_with_error("Neplatná položka cenníka.")
+            entry = PriceEntry.query.filter_by(id=catalog_id, user_id=current_user.id).first()
+            if entry is None:
+                return back_with_error("Položka cenníka nepatrí k tvojmu účtu.")
+            if name == entry.description and unit == entry.unit:
+                row["catalog_id"] = entry.id
+                row["unit_cost_cents"] = entry.cost_cents
+                row["price_origin"] = ("catalog" if price * 100 == entry.sale_price_cents
+                                       else "catalog-manual-override")
+                row["price_source_note"] = entry.source_note
+        items.append(row)
 
-    if not company_id:
-        flash("Vyber firmu.", "danger")
-        if job:
-            return redirect(url_for("offers.create_offer_from_job", job_id=job.id))
-        return redirect(url_for("offers.offer_create"))
+    if not company_id or not Company.query.filter_by(id=company_id, user_id=current_user.id).first():
+        return back_with_error("Vyber firmu.")
 
     if not customer_name:
-        flash("Zadaj meno zákazníka.", "danger")
-        if job:
-            return redirect(url_for("offers.create_offer_from_job", job_id=job.id))
-        return redirect(url_for("offers.offer_create"))
+        return back_with_error("Zadaj meno zákazníka.")
 
     if not items:
-        flash("Ponuka musí mať aspoň jednu položku.", "danger")
-        if job:
-            return redirect(url_for("offers.create_offer_from_job", job_id=job.id))
-        return redirect(url_for("offers.offer_create"))
+        return back_with_error("Ponuka musí mať aspoň jednu položku.")
+    if currency.upper() != "EUR":
+        return back_with_error("Tento pracovný tok zatiaľ podporuje iba EUR.")
     offer_number = generate_offer_number(
             user_id=current_user.id,
             company_id=int(company_id) if company_id else None
@@ -1014,6 +1239,9 @@ def save_offer_from_form(job=None):
         offer_number=offer_number,
         user_id=current_user.id,
         job_id=job.id if job else None,
+        lead_id=lead.id if lead else None,
+        client_id=lead.client_id if lead else (job.client_id if job else None),
+        site_id=lead.site_id if lead else (job.site_id if job else None),
         company_id=int(company_id),
         customer_name=customer_name,
         customer_email=customer_email,
@@ -1028,9 +1256,6 @@ def save_offer_from_form(job=None):
 
     db.session.add(offer)
 
-    if job:
-        job.status = "offer_sent"
-
     db.session.commit()
 
     flash("Cenová ponuka bola vytvorená.", "success")
@@ -1044,12 +1269,15 @@ def offer_create():
 
     companies = Company.query.filter_by(user_id=current_user.id).all()
     clients = Client.query.filter_by(user_id=current_user.id).order_by(Client.name.asc()).all()
+    price_entries = PriceEntry.query.filter_by(user_id=current_user.id).order_by(PriceEntry.kind, PriceEntry.description).all()
 
     return render_template(
         "offers_create.html",
         companies=companies,
         clients=clients,
+        price_entries=price_entries,
         job=None,
+        lead=None,
         default_customer_name="",
         default_customer_email="",
         default_notes="",
@@ -1069,6 +1297,7 @@ def create_offer_from_job(job_id):
 
     companies = Company.query.filter_by(user_id=current_user.id).all()
     clients = Client.query.filter_by(user_id=current_user.id).order_by(Client.name.asc()).all()
+    price_entries = PriceEntry.query.filter_by(user_id=current_user.id).order_by(PriceEntry.kind, PriceEntry.description).all()
 
     default_notes_parts = []
 
@@ -1085,10 +1314,32 @@ def create_offer_from_job(job_id):
         companies=companies,
         clients=clients,
         job=job,
+        lead=None,
         default_customer_name=job.client.name if job.client else "",
         default_customer_email=job.client.email if job.client and job.client.email else "",
         default_notes=default_notes,
         default_company_id=job.company_id,
+        price_entries=price_entries,
+    )
+
+
+@offers.route("/offers/create-from-lead/<int:lead_id>", methods=["GET", "POST"])
+@login_required
+def create_offer_from_lead(lead_id):
+    lead = Lead.query.filter_by(id=lead_id, user_id=current_user.id).first_or_404()
+    if request.method == "POST":
+        return save_offer_from_form(lead=lead)
+    companies = Company.query.filter_by(user_id=current_user.id).all()
+    clients = Client.query.filter_by(user_id=current_user.id).order_by(Client.name.asc()).all()
+    price_entries = PriceEntry.query.filter_by(user_id=current_user.id).order_by(PriceEntry.kind, PriceEntry.description).all()
+    return render_template(
+        "offers_create.html", companies=companies, clients=clients,
+        job=None, lead=lead,
+        default_customer_name=lead.customer_name or "",
+        default_customer_email=lead.customer_email or "",
+        default_notes=lead.description or "",
+        default_company_id=None,
+        price_entries=price_entries,
     )
     
 

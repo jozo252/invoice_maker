@@ -26,6 +26,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from PIL import Image
 import base64
 import mimetypes
+from types import SimpleNamespace
 from email_utils import send_email_offer
 
 
@@ -58,6 +59,20 @@ def _D(x, default="0"):
         return Decimal(str(x))
     except (InvalidOperation, ValueError, TypeError):
         return Decimal(default)
+
+
+class InvoiceDocument:
+    """Render an issued invoice from the saved parties, if available."""
+
+    def __init__(self, invoice):
+        self._invoice = invoice
+        self.company = (SimpleNamespace(**invoice.seller_snapshot)
+                        if invoice.seller_snapshot else invoice.company)
+        self.client = (SimpleNamespace(**invoice.buyer_snapshot)
+                       if invoice.buyer_snapshot else invoice.client)
+
+    def __getattr__(self, name):
+        return getattr(self._invoice, name)
 
 # Initialize Stripe with your secret key
 
@@ -125,11 +140,10 @@ def stripe_webhook():
         print("❌ Invalid signature", e)
         return 'Invalid signature', 400
 
-    print("✅ Webhook event parsed:", event['type'])
+    current_app.logger.info("Stripe webhook event: %s", event['type'])
 
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
-        print("✅ Session data:", session)
         user_id = session.get('metadata', {}).get('user_id')
         if user_id:
             user = User.query.get(int(user_id))
@@ -233,7 +247,7 @@ def login():
         if user and check_password_hash(user.password_hash, form.password.data):
             login_user(user)
             print("Login successful")
-            return redirect(url_for('main.dashboard'))
+            return redirect(url_for('workboard.today'))
         else:
             print("Invalid credentials")
     else:
@@ -361,6 +375,7 @@ def index():
 @login_required
 def download_invoice(invoice_id):
     invoice = Invoice.query.filter_by(id=invoice_id, user_id=current_user.id).first_or_404()
+    invoice = InvoiceDocument(invoice)
 
     # compute amount (same as view_invoice)
     base = Decimal(str(invoice.total_cost or 0))
@@ -422,6 +437,7 @@ def send_invoice_email_route(invoice_id):
 
 
 def send_invoice_email(invoice,attachment_file=None,reply_to=None):
+    invoice = InvoiceDocument(invoice)
 
     # compute amount (same as view_invoice)
     base = Decimal(str(invoice.total_cost or 0))
@@ -504,9 +520,9 @@ def send_invoice_email(invoice,attachment_file=None,reply_to=None):
 
         return f"✅ Faktúra {invoice.invoice_number} bola úspešne odoslaná na {invoice.client.email}."
 
-    except Exception as e:
-        print(f"[✗] Chyba pri odosielaní e-mailu: {str(e)}")
-        return f"❌ Chyba pri odosielaní e-mailu: {str(e)}"
+    except Exception:
+        current_app.logger.exception("Invoice email delivery failed")
+        raise
 
     finally:
         if os.path.exists(pdf_path):
@@ -1121,6 +1137,7 @@ def view_invoice(invoice_id):
         .options(joinedload(Invoice.company), joinedload(Invoice.client), joinedload(Invoice.items))
         .filter(Invoice.id==invoice_id, Invoice.user_id==current_user.id)
         .first_or_404())
+    invoice = InvoiceDocument(invoice)
 
     # základ a DPH bezpečně
     base = _D(invoice.total_cost)  # když None → 0
@@ -1179,7 +1196,7 @@ def delete_invoice(invoice_id):
     return redirect(url_for('main.list_invoices'))
 
 
-@main.route("/test_email")
+@main.route("/test_email", methods=["POST"])
 @login_required
 def test_email():
     try:

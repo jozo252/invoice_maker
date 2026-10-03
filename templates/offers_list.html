@@ -10,6 +10,7 @@
     </div>
 
     <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('offers.leads_list') }}" class="btn btn-outline-primary">Dopyty</a>
         <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
             <i class="ti ti-arrow-left me-1"></i>
             Späť na prehľad
@@ -18,11 +19,10 @@
             <i class="ti ti-file-plus me-1"></i>
             Nová ponuka
         </a>
-       <!--- tu bol neiekdy dopyt, predchodca jobsu, ale neviem ci to tam chceme, lebo dopyty budu asi skor vecou CRM a nemusime ich mat v ponukach
        <a href="{{ url_for('offers.new_lead') }}" class="btn btn-outline-secondary">
             <i class="ti ti-message-plus me-1"></i>
             Nový dopyt
-        </a>--->
+        </a>
     </div>
 </div>
 
@@ -81,23 +81,6 @@
                                 Otvoriť
                             </a>
 
-                            <form method="POST" action="{{ url_for('offers.send_offer_email_route', offer_id=offer.id) }}">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="btn btn-sm btn-outline-primary w-100">
-                                    <i class="ti ti-mail me-1"></i>
-                                    Odoslať
-                                </button>
-                            </form>
-
-                            {% if offer.status != "accepted" %}
-                            <form method="POST" action="{{ url_for('offers.mark_offer_accepted', offer_id=offer.id) }}">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="btn btn-sm btn-outline-success w-100">
-                                    <i class="ti ti-check me-1"></i>
-                                    Označiť ako prijatú
-                                </button>
-                            </form>
-                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -123,11 +106,10 @@
             <i class="ti ti-file-plus me-1"></i>
                 Vytvoriť prvú ponuku
             </a>
-           <!---  dopyt asi nechceme, lebo dopyty budu skor vecou CRM a nemusime ich mat v ponukach
            <a href="{{ url_for('offers.new_lead') }}" class="btn btn-outline-secondary">
                 <i class="ti ti-message-plus me-1"></i>
                 Vytvoriť dopyt
-            </a>-->
+            </a>
         </div>
     </div>
 </div>

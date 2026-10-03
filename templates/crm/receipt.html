@@ -1,0 +1,67 @@
+{% extends 'crm/base.html' %}
+{% block content %}
+<a class="back" href="{{ url_for('crm.detail',job_id=receipt.job_id) }}">← Detail zákazky</a>
+<div class="heading">
+  <div>
+    <p class="eyebrow">{{ 'KONTROLA BLOČKA' if receipt.status=='draft' else 'OPRAVA NÁKLADU' }}</p>
+    <h1>{{ 'Skontrolujte načítané údaje.' if receipt.status=='draft' else 'Upraviť bloček.' }}</h1>
+    <p>Porovnajte sumu, dátum a predajcu s originálom.</p>
+  </div>
+  <a class="btn" href="{{ url_for('crm.original',receipt_id=receipt.id) }}" target="_blank" rel="noreferrer">Otvoriť originál ↗</a>
+</div>
+{% if error %}<p class="notice error" role="alert">{{ error }}</p>{% endif %}
+<div class="receipt-grid">
+  <section class="panel padded">
+    <div class="receipt-image"><img id="receipt-image" src="{{ url_for('crm.original',receipt_id=receipt.id) }}" alt="Originál bločka na kontrolu"></div>
+    <p id="ocr-status" class="help" role="status">
+      {% if receipt.status=='draft' and request.method=='GET' %}
+        {{ 'Automatické čítanie cez AI. Údaje môžete vyplniť aj ručne.' if ai_available else 'Pripravujem automatické čítanie v prehliadači. Údaje môžete vyplniť aj ručne.' }}
+      {% elif receipt.status=='draft' %}Údaje zostali zachované. Skontrolujte ich podľa originálu.
+      {% else %}Uložený originál bločka.{% endif %}
+    </p>
+    <progress id="ocr-progress" value="0" max="100" hidden></progress>
+    <button type="button" class="btn mt" id="ocr-button">Načítať údaje znovu</button>
+    {% if ai_available %}
+      <p class="help mt">{% if receipt.status=='draft' %}Automatické čítanie cez AI: fotografia bločka sa spracuje službou OpenAI.{% else %}Po kliknutí na „Načítať údaje znovu“ sa fotografia spracuje službou OpenAI. Uložený náklad sa čítaním nemení.{% endif %} Návrh pred uložením skontrolujte. Ak AI nie je dostupná, skúsime čítanie priamo v prehliadači.</p>
+    {% else %}
+      <p class="help mt">Čítanie prebieha priamo v prehliadači. Údaje pred uložením skontrolujte.</p>
+    {% endif %}
+    <details class="mt"><summary>Text z čítania v prehliadači</summary><pre id="ocr-result">{{ request.form.get('ocr_text',receipt.ocr_text or '') }}</pre></details>
+  </section>
+  <section class="panel padded">
+    <form id="receipt-form" method="post" class="form"
+      data-auto-ocr="{{ 'yes' if receipt.status=='draft' and request.method=='GET' else 'no' }}"
+      data-receipt-status="{{ receipt.status }}"
+      data-preserve-fields="{{ 'yes' if request.method=='POST' else 'no' }}"
+      data-ai-available="{{ 'yes' if ai_available else 'no' }}"
+      data-extract-url="{{ url_for('crm.extract',receipt_id=receipt.id) if ai_available else '' }}"
+      data-image-url="{{ url_for('crm.original',receipt_id=receipt.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="revision" value="{{ request.form.get('revision',receipt.revision) }}">
+      <input type="hidden" name="ocr_text" id="ocr-text" value="{{ request.form.get('ocr_text',receipt.ocr_text or '') }}">
+      <label>Priradiť k zákazke<select name="job_id" required>{% for job in jobs %}<option value="{{ job.id }}" {% if request.form.get('job_id',receipt.job_id|string)==job.id|string %}selected{% endif %}>{{ job.title }}</option>{% endfor %}</select></label>
+      <label>Predajca<input id="vendor" name="vendor" maxlength="120" required value="{{ request.form.get('vendor',receipt.vendor or '') }}"></label>
+      <div class="form-row">
+        <div>
+          <label>Dátum bločka<input id="receipt-date" name="receipt_date" type="date" required aria-describedby="date-proposal" value="{{ request.form.get('receipt_date',receipt.receipt_date.isoformat() if receipt.receipt_date else '') }}"></label>
+          <p id="date-proposal" class="help" role="status">Dátum skontrolujte podľa originálu. Dátum splatnosti nie je dátum vystavenia.</p>
+        </div>
+        <div>
+          <label>Celková suma (€)<input id="amount" name="amount" inputmode="decimal" required placeholder="0,00" aria-describedby="amount-proposal" value="{{ request.form.get('amount','%.2f'|format(receipt.amount_cents/100) if receipt.amount_cents is not none else '') }}"></label>
+          <p id="amount-proposal" class="help" role="status">{% if receipt.amount_cents is not none or request.form.get('amount') %}Vo formulári je pôvodná alebo ručne zadaná suma; aktuálne čítanie ju ešte nepotvrdilo.{% else %}Prečítaná suma sa zobrazí tu. Pred uložením ju skontrolujte.{% endif %}</p>
+          <div id="amount-apply-wrap" hidden><button id="amount-apply" type="button" class="btn mt" disabled>Použiť prečítanú sumu</button></div>
+        </div>
+      </div>
+      <label class="check"><input id="confirmed" type="checkbox" name="confirmed" value="yes"><span>Skontroloval som predajcu, dátum a celkovú sumu podľa originálu bločka.</span></label>
+      <button id="save-receipt" class="btn dark" disabled>{{ 'Potvrdiť a uložiť náklad' if receipt.status=='draft' else 'Uložiť opravu nákladu' }}</button>
+      <noscript><p class="notice">Automatické čítanie potrebuje JavaScript. Údaje vyplňte ručne a označte potvrdenie.</p><button class="btn dark">Potvrdiť a uložiť náklad</button></noscript>
+      <p class="help">Ukladá sa celková suma bločka. Rozpracovaný bloček sa do nákladov nezapočítava.</p>
+      <p class="help">Toto nie je účtovná evidencia DPH. Cudzie meny a dobropisy zatiaľ nemajú vlastný postup.</p>
+    </form>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static',filename='crm/vendor/ocr/tesseract.min.js') }}" data-ocr-base="{{ url_for('static',filename='crm/vendor/ocr') }}" id="ocr-engine"></script>
+<script type="module" src="{{ url_for('static',filename='crm/receipt-ui.js') }}"></script>
+{% endblock %}

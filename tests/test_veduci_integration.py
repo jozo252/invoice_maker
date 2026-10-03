@@ -27,7 +27,9 @@ def app():
         db.create_all()
         yield test_app
         db.session.remove()
-        db.drop_all()
+        # This is a per-test in-memory database. Closing it avoids SQLite's
+        # inability to topologically drop the legacy Offer/Job FK cycle.
+        db.engine.dispose()
 
 
 @pytest.fixture

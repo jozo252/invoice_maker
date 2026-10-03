@@ -1,0 +1,10 @@
+# Dedicated CRM runtime: no OpenAI, Stripe, production mail jobs or invoice app.
+Flask==3.1.3
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Flask-WTF==1.3.0
+Flask-Mail==0.10.0
+SQLAlchemy==2.0.54
+Pillow==12.3.0
+email-validator==2.3.0
+gunicorn==26.2.0

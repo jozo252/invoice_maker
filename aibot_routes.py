@@ -578,6 +578,7 @@ def replybot():
     return render_template("replybot.html")
 
 @aibot.route("/generate-reply", methods=["POST"])
+@login_required
 def generate_reply_route():
     user_input = request.form.get("input")
     if not user_input:
@@ -587,6 +588,7 @@ def generate_reply_route():
     return jsonify({"reply": reply})
 
 @aibot.route("/edit-reply", methods=["POST"])
+@login_required
 def edit_reply_route():
     user_input = request.form.get("input")
     if not user_input:

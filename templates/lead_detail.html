@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Dopyt {{ lead.name }}{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+  <div><h1 class="h2 mb-1">{{ lead.name }}</h1><div class="text-muted">{{ lead.customer_name }} · {{ lead.status }}</div></div>
+  <div class="d-flex gap-2"><a class="btn btn-outline-secondary" href="{{ url_for('offers.leads_list') }}">Dopyty</a><a class="btn btn-primary" href="{{ url_for('offers.create_offer_from_lead', lead_id=lead.id) }}">Vytvoriť ponuku</a></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3"><div class="card-header">Zadanie a kontakt</div><div class="card-body">
+      <p class="mb-2">{{ lead.description }}</p>
+      <div class="small text-muted">{{ lead.customer_phone or '' }}{% if lead.customer_phone and lead.customer_email %} · {% endif %}{{ lead.customer_email or '' }}</div>
+      {% if lead.site %}<div class="small mt-2">Miesto: {{ lead.site.street or '' }}, {{ lead.site.zip_code or '' }} {{ lead.site.city or '' }}, {{ lead.site.country or '' }}</div>{% endif %}
+      <div class="small mt-2">Zdroj: {{ lead.source or 'nezadaný' }} · Typ: {{ lead.work_type or 'nezadaný' }}</div>
+    </div></div>
+    <div class="card mb-3"><div class="card-header">Obhliadka</div><div class="card-body">
+      <form method="POST" action="{{ url_for('offers.add_lead_visit', lead_id=lead.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="form-label" for="starts_at">Termín</label><input id="starts_at" type="datetime-local" name="starts_at" class="form-control mb-2" required>
+        <label class="form-label" for="visit_notes">Poznámky a rozsah</label><textarea id="visit_notes" name="notes" class="form-control mb-2" rows="4" required></textarea>
+        <select name="visit_status" class="form-select mb-2"><option value="planned">Naplánovaná</option><option value="done">Uskutočnená</option></select>
+        <button class="btn btn-outline-primary" type="submit">Uložiť obhliadku</button>
+      </form>
+      {% for activity in lead.activities|sort(attribute='starts_at', reverse=True) %}
+        <div class="border-top mt-3 pt-2"><strong>{{ activity.starts_at.strftime('%d.%m.%Y %H:%M') }}</strong> · {{ activity.status }}<div>{{ activity.notes }}</div>{% if activity.status == 'planned' %}<form method="POST" action="{{ url_for('offers.finish_lead_visit', lead_id=lead.id, activity_id=activity.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-success mt-1">Označiť ako uskutočnenú</button></form>{% endif %}</div>
+      {% endfor %}
+    </div></div>
+    <div class="card"><div class="card-header">Ponuky</div><div class="card-body">
+      {% for offer in offers %}<div><a href="{{ url_for('offers.edit_offer', offer_id=offer.id) }}">{{ offer.offer_number }}</a> · {{ offer.status }}</div>{% else %}<span class="text-muted">Zatiaľ žiadna ponuka.</span>{% endfor %}
+    </div></div>
+  </div>
+  <div class="col-lg-4"><div class="card"><div class="card-header">Klient a ďalší krok</div><div class="card-body">
+    <p>{{ lead.next_action or 'Nie je určený' }}{% if lead.next_action_due %} · {{ lead.next_action_due.strftime('%d.%m.%Y') }}{% endif %}</p>
+    {% if lead.client %}<div>Klient: <strong>{{ lead.client.name }}</strong></div>{% else %}
+    <form method="POST" action="{{ url_for('offers.link_client_to_lead', lead_id=lead.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="form-label" for="client_id">Existujúci klient</label>
+      <select class="form-select mb-2" id="client_id" name="client_id"><option value="">Vyber klienta</option>{% for client in clients %}<option value="{{ client.id }}">{{ client.name }}</option>{% endfor %}</select>
+      <button class="btn btn-outline-primary mb-3" type="submit">Priradiť klienta</button>
+    </form>
+    <form method="POST" action="{{ url_for('offers.link_client_to_lead', lead_id=lead.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="create_client" value="yes">
+      <button class="btn btn-outline-secondary" type="submit">Vytvoriť nového klienta</button>
+    </form>{% endif %}
+  </div></div></div>
+</div>
+{% endblock %}
